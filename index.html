@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NPM Social</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+            margin: 0; padding: 0;
+        }
+
+        /* Background Blobs */
+        .bg-blobs { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; overflow: hidden; background: #0f172a; }
+        .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.6; animation: float 20s infinite ease-in-out alternate; }
+        .blob-1 { width: 400px; height: 400px; background: #ec4899; top: -100px; left: -100px; animation-delay: 0s; }
+        .blob-2 { width: 500px; height: 500px; background: #06b6d4; bottom: -150px; right: -100px; animation-delay: -5s; }
+        .blob-3 { width: 300px; height: 300px; background: #8b5cf6; top: 40%; left: 30%; animation-delay: -10s; }
+
+        @keyframes float { 
+            0% { transform: translate(0, 0) scale(1); } 
+            100% { transform: translate(50px, 50px) scale(1.2); } 
+        }
+
+        /* UI Components */
+        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); }
+        .glass-input { background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); color: white; transition: all 0.3s ease; }
+        .glass-input:focus { outline: none; border-color: #ec4899; box-shadow: 0 0 15px rgba(236, 72, 153, 0.3); }
+
+        .neon-text-pink { text-shadow: 0 0 10px rgba(236, 72, 153, 0.8), 0 0 20px rgba(236, 72, 153, 0.5); color: #fff; }
+        .neon-text-cyan { text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.5); color: #fff; }
+        
+        .neon-btn { background: linear-gradient(45deg, #ec4899, #8b5cf6); border: none; position: relative; z-index: 1; transition: all 0.3s ease; }
+        .neon-btn::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: inherit; background: linear-gradient(45deg, #ec4899, #8b5cf6); z-index: -1; filter: blur(10px); opacity: 0; transition: opacity 0.3s ease; }
+        .neon-btn:hover::before { opacity: 1; }
+        .neon-btn:hover { transform: translateY(-2px); }
+        
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+        .online-dot { animation: pulse-green 2s infinite; }
+
+        .story-ring { background: linear-gradient(45deg, #ec4899, #facc15, #ec4899); padding: 2px; border-radius: 50%; }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .nav-active { color: #ec4899; text-shadow: 0 0 10px rgba(236, 72, 153, 0.5); }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="bg-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div id="app" class="max-w-md mx-auto h-screen relative flex flex-col hidden">
+        <header class="glass-panel sticky top-0 z-50 px-4 py-3 flex justify-between items-center rounded-b-2xl">
+            <h1 class="text-2xl font-bold italic tracking-wider"><span class="neon-text-pink">NPM</span><span class="font-light">Social</span></h1>
+            <div class="flex gap-4 text-2xl">
+                <i class="ph ph-heart hover:text-pink-500 cursor-pointer transition"></i>
+                <i class="ph ph-paper-plane-tilt hover:text-cyan-400 cursor-pointer transition" onclick="switchTab('messages')"></i>
+            </div>
+        </header>
+
+        <main id="main-content" class="flex-1 overflow-y-auto pb-20 scroll-smooth">
+            <div id="view-feed" class="block">
+                <div class="px-2 py-4 flex gap-4 overflow-x-auto" id="stories-container"></div>
+                <div class="px-4 mb-4">
+                    <button onclick="openPostModal()" class="w-full glass-panel rounded-xl p-3 text-left text-gray-400 flex items-center gap-3 hover:bg-white/10 transition">
+                        <img id="current-user-avatar-mini" src="" class="w-8 h-8 rounded-full bg-gray-800 object-cover">
+                        <span>Neler oluyor? Bir fotoğraf paylaş...</span>
+                    </button>
+                </div>
+                <div id="feed-container" class="flex flex-col gap-6 px-4 pb-4"></div>
+            </div>
+
+            <div id="view-messages" class="hidden h-full flex flex-col">
+                <div class="p-4 border-b border-white/10 flex items-center gap-3">
+                    <i class="ph ph-arrow-left text-2xl cursor-pointer" onclick="switchTab('feed')"></i>
+                    <h2 class="text-xl font-semibold">Mesajlar</h2>
+                </div>
+                <div id="users-list" class="p-4 space-y-3 flex-1 overflow-y-auto"></div>
+                
+                <div id="chat-panel" class="hidden absolute inset-0 glass-panel z-50 flex flex-col bg-[#0f172a]/95">
+                    <div class="p-4 border-b border-white/10 flex items-center gap-3 glass-panel rounded-b-2xl">
+                        <i class="ph ph-arrow-left text-2xl cursor-pointer" onclick="closeChat()"></i>
+                        <img id="chat-avatar" src="" class="w-10 h-10 rounded-full bg-gray-800 object-cover">
+                        <h2 id="chat-username" class="text-xl font-semibold">Kullanıcı</h2>
+                    </div>
+                    <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col"></div>
+                    <div class="p-4 glass-panel rounded-t-2xl flex gap-2">
+                        <input type="text" id="chat-input" placeholder="Mesaj yaz..." class="flex-1 glass-input rounded-full px-4 py-2 text-sm">
+                        <button onclick="sendMessage()" class="neon-btn w-10 h-10 rounded-full flex items-center justify-center text-white">
+                            <i class="ph ph-paper-plane-tilt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-profile" class="hidden px-4 py-6">
+                <div class="glass-panel rounded-2xl p-6 flex flex-col items-center relative">
+                    <div class="story-ring p-1 mb-4 relative cursor-pointer group" onclick="document.getElementById('profile-upload').click()">
+                        <img id="profile-avatar" src="" class="w-24 h-24 rounded-full bg-gray-800 border-4 border-[#0f172a] object-cover transition group-hover:opacity-50">
+                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                            <i class="ph-fill ph-camera text-2xl text-white"></i>
+                        </div>
+                        <input type="file" id="profile-upload" accept="image/*" class="hidden" onchange="updateProfilePicture(event)">
+                    </div>
+                    <h2 id="profile-username" class="text-2xl font-bold neon-text-cyan">Kullanıcı Adı</h2>
+                    <p id="profile-bio" class="text-gray-400 text-sm mt-2 text-center">Biyografi henüz eklenmedi.</p>
+                    
+                    <div class="flex gap-6 mt-6 w-full justify-center text-center border-t border-white/10 pt-4">
+                        <div><div class="font-bold text-xl" id="profile-posts-count">0</div><div class="text-xs text-gray-400">Gönderi</div></div>
+                        <div><div class="font-bold text-xl">1.2B</div><div class="text-xs text-gray-400">Takipçi</div></div>
+                        <div><div class="font-bold text-xl">42</div><div class="text-xs text-gray-400">Takip</div></div>
+                    </div>
+
+                    <div class="mt-6 w-full space-y-3">
+                        <button onclick="togglePrivate()" class="w-full glass-panel py-2 rounded-xl flex items-center justify-between px-4 hover:bg-white/10 transition">
+                            <span class="flex items-center gap-2"><i class="ph ph-lock-key"></i> Gizli Hesap</span>
+                            <div id="private-toggle-ui" class="w-10 h-5 bg-gray-600 rounded-full relative transition-colors duration-300">
+                                <div class="w-4 h-4 bg-white rounded-full absolute top-0.5 left-0.5 transition-transform duration-300 transform"></div>
+                            </div>
+                        </button>
+                        <button onclick="logout()" class="w-full glass-panel py-2 rounded-xl text-red-400 flex items-center justify-center gap-2 hover:bg-red-500/20 transition">
+                            <i class="ph ph-sign-out"></i> Çıkış Yap
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <nav class="glass-panel absolute bottom-0 w-full px-6 py-4 flex justify-between items-center rounded-t-3xl z-40">
+            <button onclick="switchTab('feed')" id="nav-feed" class="text-3xl text-gray-400 transition hover:text-white nav-active"><i class="ph-fill ph-house"></i></button>
+            <button class="text-3xl text-gray-400 transition hover:text-white"><i class="ph ph-magnifying-glass"></i></button>
+            <button onclick="openPostModal()" class="w-12 h-12 rounded-full neon-btn flex items-center justify-center text-white text-2xl -mt-8 shadow-lg"><i class="ph ph-plus"></i></button>
+            <button onclick="switchTab('messages')" id="nav-messages" class="text-3xl text-gray-400 transition hover:text-white"><i class="ph ph-chat-circle"></i></button>
+            <button onclick="switchTab('profile')" id="nav-profile" class="text-3xl text-gray-400 transition hover:text-white"><i class="ph ph-user"></i></button>
+        </nav>
+
+        <div id="post-modal" class="hidden absolute inset-0 bg-[#0f172a]/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <div class="glass-panel w-full max-w-sm rounded-2xl p-5 flex flex-col gap-4">
+                <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                    <h3 class="font-semibold text-lg">Yeni Gönderi</h3>
+                    <i class="ph ph-x text-2xl cursor-pointer" onclick="closePostModal()"></i>
+                </div>
+                <textarea id="post-text" rows="3" class="glass-input rounded-xl p-3 w-full resize-none" placeholder="Ne düşünüyorsun?"></textarea>
+                
+                <label for="post-image-file" class="glass-panel rounded-xl p-4 flex flex-col items-center justify-center border-dashed border-2 border-white/20 cursor-pointer hover:bg-white/5 transition">
+                    <i class="ph ph-upload-simple text-3xl text-cyan-400 mb-2"></i>
+                    <span id="file-name-display" class="text-sm text-gray-300">Galeriden Fotoğraf Seç</span>
+                    <input type="file" id="post-image-file" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                </label>
+                
+                <img id="image-preview" src="" class="hidden w-full h-40 object-cover rounded-xl mt-2">
+
+                <button onclick="createPost()" id="share-btn" class="neon-btn py-3 rounded-xl font-semibold mt-2">Paylaş</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="auth-screen" class="max-w-md mx-auto h-screen flex flex-col items-center justify-center p-6 relative z-50">
+        <div class="glass-panel p-8 rounded-3xl w-full text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-pink-500"></div>
+            
+            <i class="ph ph-aperture text-6xl neon-text-pink mb-4 inline-block"></i>
+            <h2 class="text-3xl font-bold mb-2 tracking-wide">NPM <span class="font-light text-cyan-400">Social</span></h2>
+            <p class="text-gray-400 mb-6 text-sm">NPM Social ağına katıl.</p>
+
+            <button onclick="loginWithGoogle()" class="w-full glass-panel flex items-center justify-center gap-3 py-3 rounded-xl hover:bg-white/10 transition mb-6 border border-white/20">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5">
+                <span class="font-semibold text-sm">Google ile Giriş Yap</span>
+            </button>
+            
+            <div class="flex items-center gap-2 mb-6">
+                <div class="flex-1 h-px bg-white/10"></div>
+                <span class="text-xs text-gray-500">veya e-posta ile</span>
+                <div class="flex-1 h-px bg-white/10"></div>
+            </div>
+
+            <div class="flex mb-6 border-b border-white/10">
+                <button onclick="toggleAuthMode('login')" id="tab-login" class="flex-1 pb-2 text-pink-500 border-b-2 border-pink-500 font-semibold transition">Giriş Yap</button>
+                <button onclick="toggleAuthMode('register')" id="tab-register" class="flex-1 pb-2 text-gray-500 border-b-2 border-transparent font-semibold transition">Kayıt Ol</button>
+            </div>
+
+            <div id="auth-form" class="space-y-4">
+                <input type="text" id="auth-username" placeholder="Kullanıcı Adı" class="hidden w-full glass-input rounded-xl px-4 py-3 text-center tracking-wider">
+                <input type="email" id="auth-email" placeholder="E-Posta Adresi" class="w-full glass-input rounded-xl px-4 py-3 text-center tracking-wider">
+                <input type="password" id="auth-password" placeholder="Şifre" class="w-full glass-input rounded-xl px-4 py-3 text-center tracking-wider">
+                <button onclick="handleAuth()" id="auth-action-btn" class="w-full neon-btn py-3 rounded-xl font-bold text-lg tracking-widest shadow-lg mt-4">GİRİŞ YAP</button>
+            </div>
+            <p id="auth-message" class="text-sm text-pink-400 mt-4 hidden"></p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const localFirebaseConfig = {
+            apiKey: "AIzaSyCb48M4Hwjy6YNNvU4lSA_t1BLkj_pN7MA",
+            authDomain: "npmsocial-17d87.firebaseapp.com",
+            projectId: "npmsocial-17d87",
+            storageBucket: "npmsocial-17d87.firebasestorage.app",
+            messagingSenderId: "780624814255",
+            appId: "1:780624814255:web:36d713c4f692415572b45a",
+            databaseURL: "https://npmsocial-17d87-default-rtdb.europe-west1.firebasedatabase.app/"
+        };
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : localFirebaseConfig;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'npmsocial-17d87';
+
+        // Firebase Initialization
+        let app, auth, db, storage, rtdb;
+        try {
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            storage = firebase.storage();
+            rtdb = firebase.database();
+        } catch(e) {
+            console.error("Firebase init error:", e);
+        }
+
+        const state = { 
+            currentUser: null, 
+            userData: null, 
+            allUsers: [], 
+            posts: [], 
+            messages: [], 
+            presence: {}, 
+            activeChatUserId: null 
+        };
+
+        // Authentication Methods
+        let authMode = 'login';
+        
+        async function loginWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                const result = await auth.signInWithPopup(provider);
+                const user = result.user;
+                
+                const userRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(user.uid);
+                const doc = await userRef.get();
+                
+                if (!doc.exists) {
+                    await userRef.set({
+                        uid: user.uid,
+                        username: user.displayName || user.email.split('@')[0],
+                        avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
+                        bio: "NPM Social'a katıldı.",
+                        isPrivate: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            } catch (error) {
+                showAuthMessage("Google sign-in failed: " + error.message, true);
+            }
+        }
+
+        function toggleAuthMode(mode) {
+            authMode = mode;
+            document.getElementById('tab-login').className = mode === 'login' ? 'flex-1 pb-2 text-pink-500 border-b-2 border-pink-500 font-semibold transition' : 'flex-1 pb-2 text-gray-500 border-b-2 border-transparent font-semibold transition';
+            document.getElementById('tab-register').className = mode === 'register' ? 'flex-1 pb-2 text-pink-500 border-b-2 border-pink-500 font-semibold transition' : 'flex-1 pb-2 text-gray-500 border-b-2 border-transparent font-semibold transition';
+            document.getElementById('auth-username').classList.toggle('hidden', mode === 'login');
+            document.getElementById('auth-action-btn').innerText = mode === 'login' ? 'GİRİŞ YAP' : 'KAYIT OL';
+            document.getElementById('auth-message').classList.add('hidden');
+        }
+
+        function showAuthMessage(msg, isError = false) {
+            const msgEl = document.getElementById('auth-message');
+            msgEl.innerText = msg; 
+            msgEl.className = `text-sm mt-4 block font-semibold ${isError ? 'text-red-400' : 'text-green-400'}`;
+            msgEl.classList.remove('hidden');
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const btn = document.getElementById('auth-action-btn');
+
+            if (!email || !password) return showAuthMessage('Lütfen bilgileri eksiksiz girin.', true);
+            
+            btn.disabled = true; 
+            btn.innerText = 'BEKLEYİN...';
+
+            try {
+                if (authMode === 'login') {
+                    const cred = await auth.signInWithEmailAndPassword(email, password);
+                    if (!cred.user.emailVerified) { 
+                        await auth.signOut(); 
+                        showAuthMessage('Lütfen e-postanızı onaylayın.', true); 
+                    }
+                } else {
+                    const username = document.getElementById('auth-username').value.trim();
+                    if (!username) throw new Error("Kullanıcı adı gerekli.");
+                    
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(cred.user.uid).set({
+                        uid: cred.user.uid, 
+                        username: username, 
+                        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`, 
+                        bio: "NPM Social kullanıcısı", 
+                        isPrivate: false, 
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    await cred.user.sendEmailVerification();
+                    await auth.signOut();
+                    showAuthMessage('Kayıt başarılı. Lütfen e-postanızı onaylayın.', false);
+                    toggleAuthMode('login');
+                }
+            } catch (error) {
+                console.error(error);
+                showAuthMessage("İşlem başarısız. Bilgileri kontrol edin.", true);
+            } finally {
+                btn.disabled = false; 
+                btn.innerText = authMode === 'login' ? 'GİRİŞ YAP' : 'KAYIT OL';
+            }
+        }
+
+        // Application State & Presence
+        async function initApp() {
+            auth.onAuthStateChanged(async (user) => {
+                if (user && (user.emailVerified || user.providerData.some(p => p.providerId === 'google.com'))) {
+                    state.currentUser = user;
+                    await setupPresence();
+                    await loadUserProfile();
+                } else {
+                    document.getElementById('app').classList.add('hidden');
+                    document.getElementById('auth-screen').classList.remove('hidden');
+                    document.getElementById('auth-screen').classList.add('flex');
+                }
+            });
+        }
+
+        async function setupPresence() {
+            if (!state.currentUser) return;
+            const uid = state.currentUser.uid;
+            const userStatusRef = rtdb.ref(`/artifacts/${appId}/presence/${uid}`);
+            
+            const isOfflineForDatabase = { state: 'offline', last_changed: firebase.database.ServerValue.TIMESTAMP };
+            const isOnlineForDatabase = { state: 'online', last_changed: firebase.database.ServerValue.TIMESTAMP };
+
+            rtdb.ref('.info/connected').on('value', function(snapshot) {
+                if (snapshot.val() == false) return;
+                userStatusRef.onDisconnect().set(isOfflineForDatabase).then(function() {
+                    userStatusRef.set(isOnlineForDatabase);
+                });
+            });
+
+            rtdb.ref(`/artifacts/${appId}/presence`).on('value', (snapshot) => {
+                state.presence = snapshot.val() || {};
+                renderUsersList(); 
+            });
+        }
+
+        async function loadUserProfile() {
+            const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).get();
+            if (doc.exists) {
+                state.userData = doc.data();
+                
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('auth-screen').classList.remove('flex');
+                document.getElementById('app').classList.remove('hidden');
+                
+                document.getElementById('current-user-avatar-mini').src = state.userData.avatar;
+                document.getElementById('profile-avatar').src = state.userData.avatar;
+                document.getElementById('profile-username').innerText = state.userData.username;
+                
+                updatePrivateUI();
+                listenToData();
+            }
+        }
+
+        function logout() { 
+            auth.signOut(); 
+            window.location.reload(); 
+        }
+
+        // Data Listeners
+        function listenToData() {
+            const dataRef = db.collection('artifacts').doc(appId).collection('public').doc('data');
+            
+            dataRef.collection('users').onSnapshot(snap => { 
+                state.allUsers = snap.docs.map(doc => doc.data()); 
+                renderStories(); 
+                renderUsersList(); 
+            });
+            
+            dataRef.collection('posts').onSnapshot(snap => { 
+                state.posts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0)); 
+                renderFeed(); 
+            });
+            
+            dataRef.collection('messages').onSnapshot(snap => { 
+                state.messages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0)); 
+                if (state.activeChatUserId) renderChatMessages(); 
+            });
+        }
+
+        // Media & Post Creation
+        let selectedFile = null;
+
+        function openPostModal() {
+            document.getElementById('post-modal').classList.remove('hidden');
+            selectedFile = null;
+            document.getElementById('post-image-file').value = '';
+            document.getElementById('file-name-display').innerText = 'Galeriden Fotoğraf Seç';
+            document.getElementById('image-preview').classList.add('hidden');
+        }
+
+        function closePostModal() { 
+            document.getElementById('post-modal').classList.add('hidden'); 
+        }
+
+        function handleFileSelect(event) {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                document.getElementById('file-name-display').innerText = selectedFile.name;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.getElementById('image-preview');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(selectedFile);
+            }
+        }
+
+        async function createPost() {
+            const text = document.getElementById('post-text').value.trim();
+            if (!text && !selectedFile) return;
+
+            const btn = document.getElementById('share-btn');
+            btn.innerText = "Yükleniyor..."; 
+            btn.disabled = true;
+
+            let imageUrl = null;
+
+            try {
+                if (selectedFile) {
+                    const storageRef = storage.ref(`artifacts/${appId}/public/posts/${Date.now()}_${selectedFile.name}`);
+                    const uploadTask = await storageRef.put(selectedFile);
+                    imageUrl = await uploadTask.ref.getDownloadURL();
+                }
+
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('posts').add({
+                    authorId: state.currentUser.uid, 
+                    text: text, 
+                    imageUrl: imageUrl, 
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                document.getElementById('post-text').value = '';
+                closePostModal();
+            } catch (error) { 
+                console.error("Post creation error:", error); 
+                alert("Yükleme başarısız oldu."); 
+            } finally { 
+                btn.innerText = "Paylaş"; 
+                btn.disabled = false; 
+            }
+        }
+
+        async function updateProfilePicture(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const storageRef = storage.ref(`artifacts/${appId}/public/avatars/${state.currentUser.uid}_${Date.now()}`);
+                const uploadTask = await storageRef.put(file);
+                const newAvatarUrl = await uploadTask.ref.getDownloadURL();
+
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).update({ avatar: newAvatarUrl });
+                
+                state.userData.avatar = newAvatarUrl;
+                document.getElementById('profile-avatar').src = newAvatarUrl;
+                document.getElementById('current-user-avatar-mini').src = newAvatarUrl;
+            } catch (error) { 
+                console.error("Avatar update error:", error); 
+            }
+        }
+
+        // Render Functions
+        function getUser(uid) { 
+            return state.allUsers.find(u => u.uid === uid) || { username: 'Bilinmeyen', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=x' }; 
+        }
+
+        function renderUsersList() {
+            const container = document.getElementById('users-list');
+            container.innerHTML = '';
+            
+            const others = state.allUsers.filter(u => u.uid !== state.currentUser?.uid);
+            others.forEach(user => {
+                const isOnline = state.presence[user.uid]?.state === 'online';
+                const dotHtml = isOnline ? `<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-[#0f172a] online-dot"></div>` : '';
+
+                const el = document.createElement('div');
+                el.className = 'glass-panel rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:bg-white/10 transition';
+                el.onclick = () => openChat(user.uid);
+                el.innerHTML = `
+                    <div class="relative">
+                        <img src="${user.avatar}" class="w-12 h-12 rounded-full bg-gray-800 object-cover">
+                        ${dotHtml}
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-sm">${user.username}</h4>
+                        <p class="text-xs text-gray-400">${isOnline ? '<span class="text-green-400">Çevrimiçi</span>' : 'Çevrimdışı'}</p>
+                    </div>
+                    <i class="ph ph-chat-teardrop-dots text-2xl text-cyan-400 opacity-50"></i>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function renderFeed() {
+            const container = document.getElementById('feed-container');
+            container.innerHTML = '';
+            
+            if (state.posts.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-500 py-10">Henüz gönderi yok.</div>`;
+                return;
+            }
+
+            state.posts.forEach(post => {
+                const author = getUser(post.authorId);
+                const isOnline = state.presence[post.authorId]?.state === 'online';
+                
+                const dotHtml = isOnline ? `<div class="w-2.5 h-2.5 bg-green-500 rounded-full absolute bottom-0 right-0 border border-[#0f172a]"></div>` : '';
+                const privateBadge = author.isPrivate ? `<i class="ph-fill ph-lock-key text-pink-500 ml-1 text-xs"></i>` : '';
+                const imgHtml = post.imageUrl ? `<img src="${post.imageUrl}" class="w-full h-auto mt-3 rounded-lg object-cover max-h-96">` : '';
+
+                const postEl = document.createElement('div');
+                postEl.className = 'glass-panel rounded-2xl p-4 transition hover:bg-white/5';
+                postEl.innerHTML = `
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="relative">
+                                <img src="${author.avatar}" class="w-10 h-10 rounded-full bg-gray-800 object-cover">
+                                ${dotHtml}
+                            </div>
+                            <div>
+                                <div class="font-semibold text-sm flex items-center">${author.username} ${privateBadge}</div>
+                                <div class="text-xs text-gray-400">${post.timestamp ? new Date(post.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Şimdi'}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-sm font-light text-gray-200">${post.text.replace(/\n/g, '<br>')}</p>
+                    ${imgHtml}
+                    <div class="flex gap-6 mt-4 text-gray-400">
+                        <div class="flex items-center gap-1 hover:text-pink-500 cursor-pointer transition"><i class="ph ph-heart text-xl"></i></div>
+                        <div class="flex items-center gap-1 hover:text-cyan-400 cursor-pointer transition"><i class="ph ph-chat-circle text-xl"></i></div>
+                    </div>
+                `;
+                container.appendChild(postEl);
+            });
+        }
+
+        function renderStories() {
+            let html = `
+                <div class="flex flex-col items-center gap-1 cursor-pointer min-w-[70px]">
+                    <div class="story-ring p-0.5">
+                        <img src="${state.userData?.avatar}" class="w-16 h-16 rounded-full border-2 border-[#0f172a] object-cover">
+                    </div>
+                    <span class="text-xs text-gray-300">Hikayen</span>
+                </div>`;
+                
+            const others = state.allUsers.filter(u => u.uid !== state.currentUser?.uid).slice(0, 10);
+            others.forEach(user => { 
+                html += `
+                    <div class="flex flex-col items-center gap-1 cursor-pointer min-w-[70px]">
+                        <div class="story-ring p-0.5">
+                            <img src="${user.avatar}" class="w-16 h-16 rounded-full border-2 border-[#0f172a] object-cover">
+                        </div>
+                        <span class="text-xs text-gray-300 truncate w-14 text-center">${user.username}</span>
+                    </div>`; 
+            });
+            document.getElementById('stories-container').innerHTML = html;
+        }
+
+        // Navigation
+        function switchTab(tab) {
+            ['feed', 'messages', 'profile'].forEach(t => document.getElementById(`view-${t}`).classList.add('hidden'));
+            document.querySelectorAll('nav button').forEach(b => { 
+                b.classList.remove('nav-active'); 
+                b.querySelector('i')?.classList.remove('ph-fill'); 
+            });
+            
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            
+            if (tab !== 'feed') {
+                document.getElementById(`nav-${tab}`).classList.add('nav-active');
+                document.getElementById(`nav-${tab}`).querySelector('i').classList.add('ph-fill');
+            } else {
+                document.getElementById('nav-feed').classList.add('nav-active'); 
+                document.getElementById('nav-feed').querySelector('i').classList.add('ph-fill'); 
+            }
+            
+            if (tab === 'messages') renderUsersList();
+            if (tab === 'profile') document.getElementById('profile-posts-count').innerText = state.posts.filter(p => p.authorId === state.currentUser.uid).length;
+        }
+
+        // Messaging
+        function openChat(targetId) {
+            state.activeChatUserId = targetId; 
+            const targetUser = getUser(targetId);
+            
+            document.getElementById('chat-avatar').src = targetUser.avatar;
+            document.getElementById('chat-username').innerText = targetUser.username;
+            document.getElementById('chat-panel').classList.remove('hidden');
+            
+            renderChatMessages();
+        }
+
+        function closeChat() { 
+            state.activeChatUserId = null; 
+            document.getElementById('chat-panel').classList.add('hidden'); 
+        }
+
+        function renderChatMessages() {
+            if (!state.activeChatUserId) return;
+            
+            const targetId = state.activeChatUserId; 
+            const myId = state.currentUser.uid;
+            
+            const chatMsgs = state.messages.filter(m => (m.senderId === myId && m.receiverId === targetId) || (m.senderId === targetId && m.receiverId === myId));
+            const container = document.getElementById('chat-messages'); 
+            container.innerHTML = '';
+            
+            chatMsgs.forEach(msg => {
+                const isMe = msg.senderId === myId;
+                const time = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+                
+                container.innerHTML += `
+                    <div class="flex w-full ${isMe ? 'justify-end' : 'justify-start'}">
+                        <div class="max-w-[75%] p-3 rounded-2xl text-sm ${isMe ? 'bg-gradient-to-r from-pink-500 to-purple-600 rounded-tr-sm text-white' : 'glass-panel rounded-tl-sm text-gray-100'}">
+                            ${msg.text}
+                            <div class="text-[10px] text-right mt-1 opacity-60">${time}</div>
+                        </div>
+                    </div>`;
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input'); 
+            const text = input.value.trim();
+            
+            if (!text || !state.activeChatUserId) return;
+            
+            input.value = '';
+            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('messages').add({
+                senderId: state.currentUser.uid, 
+                receiverId: state.activeChatUserId, 
+                text: text, 
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        
+        document.getElementById('chat-input').addEventListener('keypress', e => { 
+            if (e.key === 'Enter') sendMessage(); 
+        });
+
+        // Settings
+        async function togglePrivate() {
+            const newState = !state.userData.isPrivate;
+            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).update({ isPrivate: newState });
+            state.userData.isPrivate = newState; 
+            updatePrivateUI();
+        }
+
+        function updatePrivateUI() {
+            const bg = document.getElementById('private-toggle-ui'); 
+            const dot = bg.firstElementChild;
+            
+            if (state.userData.isPrivate) { 
+                bg.classList.replace('bg-gray-600', 'bg-pink-500'); 
+                dot.classList.add('translate-x-5'); 
+                bg.style.boxShadow = "0 0 10px #ec4899"; 
+            } else { 
+                bg.classList.replace('bg-pink-500', 'bg-gray-600'); 
+                dot.classList.remove('translate-x-5'); 
+                bg.style.boxShadow = "none"; 
+            }
+            renderFeed();
+        }
+
+        window.onload = () => initApp();
+    </script>
+</body>
+</html>
