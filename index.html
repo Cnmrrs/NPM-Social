@@ -281,17 +281,14 @@
 
         let authMode = 'login';
         
+        // HATA ÇÖZÜMÜ: Sadece popup açar, profil veritabanı kontrolünü asıl yükleyiciye (loadUserProfile) devrederek yarış durumunu (race condition) ortadan kaldırır.
         async function loginWithGoogle() {
             const provider = new firebase.auth.GoogleAuthProvider();
             try {
-                const result = await auth.signInWithPopup(provider);
-                const user = result.user;
-                const userRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(user.uid);
-                const doc = await userRef.get();
-                if (!doc.exists) {
-                    await userRef.set({ uid: user.uid, username: user.displayName || user.email.split('@')[0], avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`, bio: "NPM Social'a katıldı.", isPrivate: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-                }
-            } catch (error) { showToast("Google girişi başarısız veya iptal edildi.", true); }
+                await auth.signInWithPopup(provider);
+            } catch (error) { 
+                showToast("Google Giriş Hatası: " + error.message, true); 
+            }
         }
 
         function toggleAuthMode(mode) {
@@ -308,6 +305,7 @@
             msgEl.innerText = msg; msgEl.className = `text-sm mt-4 block font-semibold ${isError ? 'text-red-400' : 'text-green-400'}`; msgEl.classList.remove('hidden');
         }
 
+        // HATA ÇÖZÜMÜ: Firebase Auth'dan dönen gerçek hata kodlarını yakalayıp ekranda Türkçe ve detaylı gösterir.
         async function handleAuth() {
             const email = document.getElementById('auth-email').value.trim(); const password = document.getElementById('auth-password').value; const btn = document.getElementById('auth-action-btn');
             if (!email || !password) return showAuthMessage('Lütfen bilgileri eksiksiz girin.', true);
@@ -324,50 +322,90 @@
                     await cred.user.sendEmailVerification(); await auth.signOut();
                     showAuthMessage('Kayıt başarılı. Lütfen e-postanızı onaylayın.', false); toggleAuthMode('login');
                 }
-            } catch (error) { showAuthMessage("İşlem başarısız. Bilgileri kontrol edin.", true); } 
+            } catch (error) { 
+                let hataMesaji = "İşlem başarısız: " + error.message;
+                if(error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') hataMesaji = "E-posta veya şifre hatalı.";
+                if(error.code === 'auth/email-already-in-use') hataMesaji = "Bu e-posta adresi zaten kullanımda.";
+                if(error.code === 'auth/weak-password') hataMesaji = "Şifre çok zayıf (en az 6 karakter).";
+                showAuthMessage(hataMesaji, true); 
+            } 
             finally { btn.disabled = false; btn.innerText = authMode === 'login' ? 'GİRİŞ YAP' : 'KAYIT OL'; }
         }
 
         async function initApp() {
             auth.onAuthStateChanged(async (user) => {
                 if (user && (user.emailVerified || user.providerData.some(p => p.providerId === 'google.com'))) {
-                    state.currentUser = user; await setupPresence(); await loadUserProfile();
+                    state.currentUser = user; 
+                    await setupPresence(); 
+                    await loadUserProfile();
                 } else {
                     document.getElementById('app').classList.add('hidden'); document.getElementById('auth-screen').classList.remove('hidden'); document.getElementById('auth-screen').classList.add('flex');
                 }
             });
         }
 
+        // HATA ÇÖZÜMÜ: Eğer Realtime DB veritabanın aktif değilse, presence sistemi tüm uygulamayı çökertmemesi için try-catch ile koruma altına alındı.
         async function setupPresence() {
             if (!state.currentUser) return;
-            const uid = state.currentUser.uid; const userStatusRef = rtdb.ref(`/artifacts/${appId}/presence/${uid}`);
-            const isOfflineForDatabase = { state: 'offline', last_changed: firebase.database.ServerValue.TIMESTAMP };
-            const isOnlineForDatabase = { state: 'online', last_changed: firebase.database.ServerValue.TIMESTAMP };
-            rtdb.ref('.info/connected').on('value', function(snapshot) {
-                if (snapshot.val() == false) return;
-                userStatusRef.onDisconnect().set(isOfflineForDatabase).then(function() { userStatusRef.set(isOnlineForDatabase); });
-            });
-            rtdb.ref(`/artifacts/${appId}/presence`).on('value', (snapshot) => { state.presence = snapshot.val() || {}; renderUsersList(); });
+            try {
+                const uid = state.currentUser.uid; const userStatusRef = rtdb.ref(`/artifacts/${appId}/presence/${uid}`);
+                const isOfflineForDatabase = { state: 'offline', last_changed: firebase.database.ServerValue.TIMESTAMP };
+                const isOnlineForDatabase = { state: 'online', last_changed: firebase.database.ServerValue.TIMESTAMP };
+                rtdb.ref('.info/connected').on('value', function(snapshot) {
+                    if (snapshot.val() == false) return;
+                    userStatusRef.onDisconnect().set(isOfflineForDatabase).then(function() { userStatusRef.set(isOnlineForDatabase); });
+                });
+                rtdb.ref(`/artifacts/${appId}/presence`).on('value', (snapshot) => { state.presence = snapshot.val() || {}; renderUsersList(); });
+            } catch (error) {
+                console.warn("Çevrimiçi sistemi başlatılamadı (Realtime DB aktif olmayabilir):", error);
+            }
         }
 
+        // HATA ÇÖZÜMÜ: Profil yoksa sessizce kalmak yerine, varsa günceller, yoksa (Google Login ilk giriş gibi) profili güvenli şekilde oluşturup öyle uygulamayı açar.
         async function loadUserProfile() {
-            const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).get();
-            if (doc.exists) {
-                state.userData = doc.data();
-                document.getElementById('auth-screen').classList.add('hidden'); document.getElementById('auth-screen').classList.remove('flex'); document.getElementById('app').classList.remove('hidden');
-                document.getElementById('current-user-avatar-mini').src = state.userData.avatar; document.getElementById('profile-avatar').src = state.userData.avatar; document.getElementById('profile-username').innerText = state.userData.username;
-                updatePrivateUI(); listenToData(); handleSearch(); 
+            try {
+                const userRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid);
+                let doc = await userRef.get();
+
+                if (!doc.exists) {
+                    // Hesap var ama Firestore profili yoksa (Google ilk girişi)
+                    const user = state.currentUser;
+                    const username = user.displayName || user.email?.split('@')[0] || 'Kullanıcı';
+                    await userRef.set({
+                        uid: user.uid,
+                        username: username,
+                        avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
+                        bio: "NPM Social'a katıldı.",
+                        isPrivate: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    doc = await userRef.get(); // Veriyi tekrar çek
+                }
+
+                if (doc.exists) {
+                    state.userData = doc.data();
+                    document.getElementById('auth-screen').classList.add('hidden'); document.getElementById('auth-screen').classList.remove('flex'); document.getElementById('app').classList.remove('hidden');
+                    document.getElementById('current-user-avatar-mini').src = state.userData.avatar; document.getElementById('profile-avatar').src = state.userData.avatar; document.getElementById('profile-username').innerText = state.userData.username;
+                    updatePrivateUI(); listenToData(); handleSearch(); 
+                }
+            } catch (error) {
+                console.error("Profil Yükleme Hatası:", error);
+                showAuthMessage("Sunucu Hatası: Firestore veritabanı kurallarınızı kontrol edin.", true);
             }
         }
 
         function logout() { auth.signOut(); window.location.reload(); }
 
         function listenToData() {
-            const dataRef = db.collection('artifacts').doc(appId).collection('public').doc('data');
-            dataRef.collection('users').onSnapshot(snap => { state.allUsers = snap.docs.map(doc => doc.data()); renderStories(); renderUsersList(); handleSearch(); });
-            dataRef.collection('posts').onSnapshot(snap => { state.posts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0)); renderFeed(); });
-            dataRef.collection('messages').onSnapshot(snap => { state.messages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0)); if (state.activeChatUserId) renderChatMessages(); });
-            dataRef.collection('groups').onSnapshot(snap => { state.groups = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderUsersList(); });
+            try {
+                const dataRef = db.collection('artifacts').doc(appId).collection('public').doc('data');
+                dataRef.collection('users').onSnapshot(snap => { state.allUsers = snap.docs.map(doc => doc.data()); renderStories(); renderUsersList(); handleSearch(); }, err => console.warn("Kullanıcıları dinleme hatası", err));
+                dataRef.collection('posts').onSnapshot(snap => { state.posts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0)); renderFeed(); }, err => console.warn("Post dinleme hatası", err));
+                dataRef.collection('messages').onSnapshot(snap => { state.messages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0)); if (state.activeChatUserId) renderChatMessages(); }, err => console.warn("Mesaj dinleme hatası", err));
+                dataRef.collection('groups').onSnapshot(snap => { state.groups = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderUsersList(); }, err => console.warn("Grup dinleme hatası", err));
+            } catch (error) {
+                console.warn("Veri dinleyiciler başlatılamadı:", error);
+            }
         }
 
         let selectedFile = null;
