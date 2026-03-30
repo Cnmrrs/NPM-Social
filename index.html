@@ -53,6 +53,7 @@
         <header class="glass-panel sticky top-0 z-50 px-4 py-3 flex justify-between items-center rounded-b-2xl">
             <h1 class="text-2xl font-bold italic tracking-wider"><span class="neon-text-pink">NPM</span><span class="font-light">Social</span></h1>
             <div class="flex gap-4 text-2xl">
+                <i class="ph ph-rocket hover:text-purple-400 cursor-pointer transition" onclick="openComingSoon()" title="Yakında"></i>
                 <div class="relative cursor-pointer" onclick="openNotifications()">
                     <i class="ph ph-heart hover:text-pink-500 transition"></i>
                     <div id="notif-badge" class="hidden absolute top-0.5 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#0f172a]"></div>
@@ -258,6 +259,44 @@
                 <h2 class="text-xl font-semibold">Bildirimler</h2>
             </div>
             <div id="notifications-list" class="p-4 space-y-3 flex-1 overflow-y-auto"></div>
+        </div>
+
+        <!-- YAKINDA GELECEKLER (ROADMAP) MODALI -->
+        <div id="coming-soon-modal" class="hidden absolute inset-0 bg-[#0f172a]/95 backdrop-blur-md z-[85] flex flex-col">
+            <div class="p-4 flex items-center gap-3 border-b border-white/10 glass-panel rounded-b-2xl">
+                <i class="ph ph-arrow-left text-2xl cursor-pointer" onclick="closeComingSoon()"></i>
+                <h2 class="text-xl font-semibold neon-text-cyan">Yakında 🚀</h2>
+            </div>
+            <div class="p-6 space-y-4 flex-1 overflow-y-auto">
+                <div class="glass-panel p-4 rounded-xl flex items-center gap-4 border border-pink-500/30">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 flex items-center justify-center text-white text-2xl"><i class="ph-fill ph-aperture"></i></div>
+                    <div>
+                        <h3 class="font-bold text-lg">Story</h3>
+                        <p class="text-sm text-gray-400">24 saatlik anlık paylaşımlar.</p>
+                    </div>
+                </div>
+                <div class="glass-panel p-4 rounded-xl flex items-center gap-4 border border-blue-500/30">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-white text-2xl"><i class="ph-fill ph-map-pin"></i></div>
+                    <div>
+                        <h3 class="font-bold text-lg">Arkadaş Konumu</h3>
+                        <p class="text-sm text-gray-400">Arkadaşlarının nerede olduğunu haritada canlı gör.</p>
+                    </div>
+                </div>
+                <div class="glass-panel p-4 rounded-xl flex items-center gap-4 border border-purple-500/30">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl"><i class="ph-fill ph-video-camera"></i></div>
+                    <div>
+                        <h3 class="font-bold text-lg">BSV</h3>
+                        <p class="text-sm text-gray-400">Beyin Sulandıran Videolar ile dikey akış keyfi.</p>
+                    </div>
+                </div>
+                <div class="glass-panel p-4 rounded-xl flex items-center gap-4 border border-green-500/30">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-teal-400 flex items-center justify-center text-white text-2xl"><i class="ph-fill ph-fingerprint"></i></div>
+                    <div>
+                        <h3 class="font-bold text-lg text-white">Farklı Oturum Girişleri</h3>
+                        <p class="text-sm text-gray-400">Yeni ve havalı giriş yöntemleri sisteme entegre edilecek.</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- GRUP KURMA MODALI -->
@@ -558,6 +597,15 @@
 
         function closeNotifications() {
             document.getElementById('notifications-modal').classList.add('hidden');
+        }
+
+        // YAKINDA GELECEKLER MODALI AÇ/KAPA
+        function openComingSoon() {
+            document.getElementById('coming-soon-modal').classList.remove('hidden');
+        }
+
+        function closeComingSoon() {
+            document.getElementById('coming-soon-modal').classList.add('hidden');
         }
 
         function updateNotificationBadge() {
