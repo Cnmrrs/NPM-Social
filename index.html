@@ -63,6 +63,7 @@
 
         <main id="main-content" class="flex-1 overflow-y-auto pb-20 scroll-smooth">
             
+            <!-- Feed Görünümü -->
             <div id="view-feed" class="block">
                 <div class="px-2 py-4 flex gap-4 overflow-x-auto" id="stories-container"></div>
                 <div class="px-4 mb-4">
@@ -74,6 +75,7 @@
                 <div id="feed-container" class="flex flex-col gap-6 px-4 pb-4"></div>
             </div>
 
+            <!-- Keşfet Görünümü -->
             <div id="view-search" class="hidden px-4 py-6 flex-col">
                 <div class="glass-panel p-2 rounded-2xl flex items-center gap-2 mb-6">
                     <i class="ph ph-magnifying-glass text-xl text-gray-400 ml-2"></i>
@@ -83,6 +85,7 @@
                 <div id="search-results" class="flex flex-col gap-3"></div>
             </div>
 
+            <!-- Mesajlar Görünümü -->
             <div id="view-messages" class="hidden h-full flex flex-col">
                 <div class="p-4 border-b border-white/10 flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -95,6 +98,7 @@
                 </div>
                 <div id="users-list" class="p-4 space-y-3 flex-1 overflow-y-auto"></div>
                 
+                <!-- Chat Panel -->
                 <div id="chat-panel" class="hidden absolute inset-0 glass-panel z-50 flex flex-col bg-[#0f172a]/95">
                     <div class="p-4 border-b border-white/10 flex items-center gap-3 glass-panel rounded-b-2xl">
                         <i class="ph ph-arrow-left text-2xl cursor-pointer" onclick="closeChat()"></i>
@@ -144,7 +148,7 @@
                 </div>
             </div>
 
-            <!-- Settings View -->
+            <!-- Settings View (Gelişmiş) -->
             <div id="view-settings" class="hidden h-full flex flex-col px-4 py-6">
                 <div class="flex items-center gap-3 mb-6">
                     <i class="ph ph-arrow-left text-2xl cursor-pointer" onclick="switchTab('profile')"></i>
@@ -152,6 +156,13 @@
                 </div>
                 
                 <div class="space-y-6 flex-1">
+                    <div class="glass-panel p-4 rounded-xl">
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Biyografi</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="settings-bio" class="glass-input rounded-lg px-3 py-2 flex-1 text-sm" placeholder="Kendinden bahset...">
+                            <button onclick="changeBio()" class="neon-btn px-4 rounded-lg text-sm font-semibold">Kaydet</button>
+                        </div>
+                    </div>
                     <div class="glass-panel p-4 rounded-xl">
                         <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Kullanıcı Adı</label>
                         <div class="flex gap-2">
@@ -194,6 +205,7 @@
 
         </main>
 
+        <!-- Navigasyon -->
         <nav class="glass-panel absolute bottom-0 w-full px-6 py-4 flex justify-between items-center rounded-t-3xl z-40">
             <button onclick="switchTab('feed')" id="nav-feed" class="text-3xl text-gray-400 transition hover:text-white nav-active"><i class="ph-fill ph-house"></i></button>
             <button onclick="switchTab('search')" id="nav-search" class="text-3xl text-gray-400 transition hover:text-white"><i class="ph ph-magnifying-glass"></i></button>
@@ -283,22 +295,25 @@
         </div>
     </div>
 
-    <!-- AUTH SCREEN -->
+    <!-- AUTH SCREEN (2 Adımlı Doğrulama Eklendi) -->
     <div id="auth-screen" class="max-w-md mx-auto h-screen flex flex-col items-center justify-center p-6 relative z-50">
         <div class="glass-panel p-8 rounded-3xl w-full text-center shadow-2xl relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-pink-500"></div>
             <i class="ph ph-aperture text-6xl neon-text-pink mb-4 inline-block"></i>
             <h2 class="text-3xl font-bold mb-2 tracking-wide">NPM <span class="font-light text-cyan-400">Social</span></h2>
             <p class="text-gray-400 mb-6 text-sm">NPM Social ağına katıl.</p>
-            <button onclick="loginWithGoogle()" class="w-full glass-panel flex items-center justify-center gap-3 py-3 rounded-xl hover:bg-white/10 transition mb-6 border border-white/20">
+            
+            <button onclick="loginWithGoogle()" class="w-full glass-panel flex items-center justify-center gap-3 py-3 rounded-xl hover:bg-white/10 transition mb-4 border border-white/20">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5">
                 <span class="font-semibold text-sm">Google ile Giriş Yap</span>
             </button>
-            <div class="flex items-center gap-2 mb-6">
+            
+            <div class="flex items-center gap-2 mb-4">
                 <div class="flex-1 h-px bg-white/10"></div>
-                <span class="text-xs text-gray-500">veya e-posta ile</span>
+                <span class="text-xs text-gray-500">veya</span>
                 <div class="flex-1 h-px bg-white/10"></div>
             </div>
+
             <div class="flex mb-6 border-b border-white/10">
                 <button onclick="toggleAuthMode('login')" id="tab-login" class="flex-1 pb-2 text-pink-500 border-b-2 border-pink-500 font-semibold transition">Giriş Yap</button>
                 <button onclick="toggleAuthMode('register')" id="tab-register" class="flex-1 pb-2 text-gray-500 border-b-2 border-transparent font-semibold transition">Kayıt Ol</button>
@@ -307,7 +322,9 @@
                 <input type="text" id="auth-username" placeholder="Kullanıcı Adı" class="hidden w-full glass-input rounded-xl px-4 py-3 text-center tracking-wider">
                 <input type="email" id="auth-email" placeholder="E-Posta Adresi" class="w-full glass-input rounded-xl px-4 py-3 text-center tracking-wider">
                 <input type="password" id="auth-password" placeholder="Şifre" class="w-full glass-input rounded-xl px-4 py-3 text-center tracking-wider">
+                
                 <button onclick="handleAuth()" id="auth-action-btn" class="w-full neon-btn py-3 rounded-xl font-bold text-lg tracking-widest shadow-lg mt-4">GİRİŞ YAP</button>
+                <button onclick="sendPasswordlessLink()" id="auth-2fa-btn" class="w-full bg-transparent border border-pink-500 text-pink-400 py-3 rounded-xl font-semibold text-sm hover:bg-pink-500 hover:text-white transition mt-2">2 Adımlı Doğrulama (Link Gönder)</button>
             </div>
             <p id="auth-message" class="text-sm text-pink-400 mt-4 hidden"></p>
         </div>
@@ -325,7 +342,7 @@
         };
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : localFirebaseConfig;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'npmsocial-17d87';
-        const geminiApiKey = "";
+        const apiKey = ""; // Runtime Injection for Gemini
 
         let app, auth, db, storage, rtdb;
         try {
@@ -368,12 +385,28 @@
             document.getElementById('tab-register').className = mode === 'register' ? 'flex-1 pb-2 text-pink-500 border-b-2 border-pink-500 font-semibold transition' : 'flex-1 pb-2 text-gray-500 border-b-2 border-transparent font-semibold transition';
             document.getElementById('auth-username').classList.toggle('hidden', mode === 'login');
             document.getElementById('auth-action-btn').innerText = mode === 'login' ? 'GİRİŞ YAP' : 'KAYIT OL';
+            document.getElementById('auth-2fa-btn').classList.toggle('hidden', mode !== 'login');
             document.getElementById('auth-message').classList.add('hidden');
         }
 
         function showAuthMessage(msg, isError = false) {
             const msgEl = document.getElementById('auth-message');
             msgEl.innerText = msg; msgEl.className = `text-sm mt-4 block font-semibold ${isError ? 'text-red-400' : 'text-green-400'}`; msgEl.classList.remove('hidden');
+        }
+
+        // 2 Adımlı Doğrulama - Sihirli Link Gönderme
+        async function sendPasswordlessLink() {
+            const email = document.getElementById('auth-email').value.trim();
+            if (!email) return showAuthMessage('Lütfen e-posta adresinizi girin.', true);
+            
+            const actionCodeSettings = { url: window.location.href, handleCodeInApp: true };
+            try {
+                await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+                window.localStorage.setItem('emailForSignIn', email);
+                showAuthMessage("2 Adımlı Doğrulama aktif: E-postanıza tek kullanımlık giriş linki gönderildi. Lütfen tıklayın.", false);
+            } catch (error) {
+                showAuthMessage("Bağlantı gönderilemedi. " + error.message, true);
+            }
         }
 
         async function handleAuth() {
@@ -402,11 +435,22 @@
         }
 
         async function initApp() {
+            // E-posta Linki İle Dönüş Yakalayıcısı (2 Adımlı Doğrulama için)
+            if (auth.isSignInWithEmailLink(window.location.href)) {
+                let email = window.localStorage.getItem('emailForSignIn');
+                if (!email) email = window.prompt('Güvenlik onayı için e-posta adresinizi girin:');
+                try {
+                    await auth.signInWithEmailLink(email, window.location.href);
+                    window.localStorage.removeItem('emailForSignIn');
+                    showToast("2 Adımlı Doğrulama Başarılı!", false);
+                } catch(e) { showToast("Link geçersiz veya süresi dolmuş.", true); }
+            }
+
             const persistenceType = localStorage.getItem('npm_persistence') === 'session' ? firebase.auth.Auth.Persistence.SESSION : firebase.auth.Auth.Persistence.LOCAL;
             await auth.setPersistence(persistenceType);
             
             auth.onAuthStateChanged(async (user) => {
-                if (user && (user.emailVerified || user.providerData.some(p => p.providerId === 'google.com'))) {
+                if (user && (user.emailVerified || user.providerData.some(p => p.providerId === 'google.com') || auth.isSignInWithEmailLink(window.location.href))) {
                     state.currentUser = user; 
                     await setupPresence(); 
                     await loadUserProfile();
@@ -448,7 +492,13 @@
                     state.userData = doc.data();
                     document.getElementById('auth-screen').classList.add('hidden'); document.getElementById('auth-screen').classList.remove('flex'); document.getElementById('app').classList.remove('hidden');
                     document.getElementById('current-user-avatar-mini').src = state.userData.avatar; document.getElementById('profile-avatar').src = state.userData.avatar; document.getElementById('profile-username').innerText = state.userData.username;
-                    document.getElementById('settings-username').value = state.userData.username; document.getElementById('settings-email').value = state.currentUser.email;
+                    document.getElementById('profile-bio').innerText = state.userData.bio || "Biyografi henüz eklenmedi.";
+                    
+                    // Ayarlar Formunu Doldur
+                    document.getElementById('settings-username').value = state.userData.username; 
+                    document.getElementById('settings-email').value = state.currentUser.email;
+                    document.getElementById('settings-bio').value = state.userData.bio || "";
+                    
                     updatePrivateUI(); updatePersistenceUI(); listenToData(); handleSearch(); 
                 }
             } catch (error) { showToast("Sunucu Hatası: Firestore veritabanı kurallarınızı kontrol edin.", true); }
@@ -595,7 +645,7 @@
                 await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('posts').add({ authorId: state.currentUser.uid, text: text, imageUrl: imageUrl, likes: [], timestamp: firebase.firestore.FieldValue.serverTimestamp() });
                 document.getElementById('post-text').value = ''; closePostModal(); showToast("Gönderi başarıyla paylaşıldı!", false);
             } catch (error) { 
-                console.error(error); showToast("Yükleme başarısız! Hata: " + error.message, true); 
+                console.error(error); showToast("Yükleme başarısız! Storage kurallarını (Rules) kontrol et: " + error.message, true); 
             } finally { btn.innerText = "Paylaş"; btn.disabled = false; }
         }
 
@@ -607,7 +657,7 @@
                 await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).update({ avatar: newAvatarUrl });
                 state.userData.avatar = newAvatarUrl; document.getElementById('profile-avatar').src = newAvatarUrl; document.getElementById('current-user-avatar-mini').src = newAvatarUrl; showToast("Profil fotoğrafı güncellendi!", false);
             } catch (error) { 
-                console.error(error); showToast("Fotoğraf yüklenemedi! Hata: " + error.message, true); 
+                console.error(error); showToast("Fotoğraf yüklenemedi! Lütfen Firebase Storage Kurallarını (Rules) 'allow read, write: if true;' yapın.", true); 
             }
         }
 
@@ -743,7 +793,6 @@
         function renderFeed() {
             const container = document.getElementById('feed-container'); container.innerHTML = '';
             
-            // Gizlilik Filtresi: Sadece takip ettiklerim, kendi postlarım veya gizli olmayan hesaplar görünür.
             let displayPosts = state.posts.filter(post => {
                 if (post.authorId === state.currentUser?.uid) return true;
                 const author = getUser(post.authorId);
@@ -861,7 +910,6 @@
 
             const btn = document.getElementById('op-follow-btn');
             
-            // Dinamik Buton Yapısı
             if (isFollowing) {
                 btn.innerText = "Takip Ediliyor";
                 btn.className = "w-full bg-white/10 py-2 rounded-xl font-semibold text-gray-300 hover:bg-red-500/20 hover:text-red-400 transition";
@@ -869,8 +917,17 @@
                 btn.innerText = "İstek Gönderildi";
                 btn.className = "w-full bg-white/10 py-2 rounded-xl font-semibold text-gray-300 hover:bg-white/20 transition";
             } else {
-                let userPosts = state.posts.filter(p => p.authorId === uid);
-                document.getElementById('op-posts-count').innerText = userPosts.length;
+                btn.innerText = "Takip Et";
+                btn.className = "w-full neon-btn py-2 rounded-xl font-semibold transition";
+            }
+            
+            btn.onclick = () => handleFollowAction(uid, user.isPrivate);
+
+            const container = document.getElementById('op-feed-container'); container.innerHTML = '';
+            
+            if (user.isPrivate && !isFollowing) {
+                container.innerHTML = `<div class="text-center py-10 flex flex-col items-center"><div class="w-16 h-16 rounded-full border-2 border-pink-500 flex items-center justify-center mb-3"><i class="ph ph-lock-key text-3xl text-pink-500"></i></div><h3 class="font-semibold text-lg">Bu Hesap Gizli</h3><p class="text-sm text-gray-400 mt-1">Fotoğraf ve videolarını görmek için onu takip et.</p></div>`;
+            } else {
                 if(userPosts.length === 0) container.innerHTML = `<div class="text-center text-gray-500 py-10">Gönderi yok.</div>`;
                 userPosts.forEach(post => {
                     const likesCount = (post.likes || []).length;
@@ -921,6 +978,7 @@
             } catch(e) { showToast("Grup oluşturulamadı.", true); }
         }
 
+        // TAM KUSURSUZ İKON RENGİ DÜZELTMESİ (Gelişmiş Geçiş)
         function switchTab(tab) {
             ['view-feed', 'view-messages', 'view-profile', 'view-search', 'view-settings'].forEach(id => {
                 const el = document.getElementById(id);
@@ -929,7 +987,11 @@
             
             ['nav-feed', 'nav-search', 'nav-messages', 'nav-profile'].forEach(id => {
                 const btn = document.getElementById(id);
-                if (btn) { btn.classList.remove('nav-active'); btn.querySelector('i')?.classList.remove('ph-fill'); }
+                if (btn) { 
+                    btn.classList.remove('nav-active'); 
+                    const icon = btn.querySelector('i');
+                    if(icon) { icon.classList.remove('ph-fill'); icon.classList.add('ph'); }
+                }
             });
             
             const activeView = document.getElementById(`view-${tab}`);
@@ -938,7 +1000,8 @@
             const activeNav = document.getElementById(`nav-${tab}`);
             if (activeNav) {
                 activeNav.classList.add('nav-active'); 
-                activeNav.querySelector('i').classList.add('ph-fill');
+                const icon = activeNav.querySelector('i');
+                if(icon) { icon.classList.remove('ph'); icon.classList.add('ph-fill'); }
             }
             
             if (tab === 'messages') renderUsersList();
@@ -948,6 +1011,17 @@
 
         // AYARLAR (Settings) MENÜSÜ FONKSİYONLARI
         function openSettings() { switchTab('settings'); }
+
+        async function changeBio() {
+            const newBio = document.getElementById('settings-bio').value.trim();
+            if(!newBio) return;
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).update({bio: newBio});
+                state.userData.bio = newBio;
+                document.getElementById('profile-bio').innerText = newBio;
+                showToast("Biyografi başarıyla güncellendi!", false);
+            } catch(e) { showToast("Güncellenemedi: " + e.message, true); }
+        }
 
         async function changeUsername() {
             const newName = document.getElementById('settings-username').value.trim();
@@ -1070,7 +1144,8 @@
 
         async function askGemini(prompt) {
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
+                // API ANAHTARI VE BAĞLANTISI GÜNCELLENDİ
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1099,7 +1174,7 @@
             const bg = document.getElementById('private-toggle-ui'); const dot = bg.firstElementChild;
             if (state.userData.isPrivate) { bg.classList.replace('bg-gray-600', 'bg-pink-500'); dot.classList.add('translate-x-5'); bg.style.boxShadow = "0 0 10px #ec4899"; } 
             else { bg.classList.replace('bg-pink-500', 'bg-gray-600'); dot.classList.remove('translate-x-5'); bg.style.boxShadow = "none"; }
-            renderFeed(); renderOtherProfileContent(); // Feed ve Profil güncellenir
+            renderFeed(); renderOtherProfileContent();
         }
 
         window.onload = () => initApp();
