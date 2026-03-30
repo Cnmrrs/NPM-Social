@@ -36,6 +36,7 @@
         .neon-btn::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: inherit; background: linear-gradient(45deg, #ec4899, #8b5cf6); z-index: -1; filter: blur(10px); opacity: 0; transition: opacity 0.3s ease; }
         .neon-btn:hover::before { opacity: 1; }
         .neon-btn:hover { transform: translateY(-2px); }
+        .neon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
         .online-dot { animation: pulse-green 2s infinite; }
@@ -52,7 +53,10 @@
         <header class="glass-panel sticky top-0 z-50 px-4 py-3 flex justify-between items-center rounded-b-2xl">
             <h1 class="text-2xl font-bold italic tracking-wider"><span class="neon-text-pink">NPM</span><span class="font-light">Social</span></h1>
             <div class="flex gap-4 text-2xl">
-                <i class="ph ph-heart hover:text-pink-500 cursor-pointer transition" onclick="showToast('Bildirimler yakında!', false)"></i>
+                <div class="relative cursor-pointer" onclick="openNotifications()">
+                    <i class="ph ph-heart hover:text-pink-500 transition"></i>
+                    <div id="notif-badge" class="hidden absolute top-0.5 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#0f172a]"></div>
+                </div>
                 <i class="ph ph-paper-plane-tilt hover:text-cyan-400 cursor-pointer transition" onclick="switchTab('messages')"></i>
             </div>
         </header>
@@ -107,7 +111,11 @@
                 </div>
             </div>
 
+            <!-- Profile View -->
             <div id="view-profile" class="hidden px-4 py-6">
+                <div class="flex justify-end mb-2">
+                    <button onclick="openSettings()" class="text-2xl text-gray-400 hover:text-white transition"><i class="ph ph-gear"></i></button>
+                </div>
                 <div class="glass-panel rounded-2xl p-6 flex flex-col items-center relative">
                     <div class="story-ring p-1 mb-4 relative cursor-pointer group" onclick="document.getElementById('profile-upload').click()">
                         <img id="profile-avatar" src="" class="w-24 h-24 rounded-full bg-gray-800 border-4 border-[#0f172a] object-cover transition group-hover:opacity-50">
@@ -120,9 +128,9 @@
                     <p id="profile-bio" class="text-gray-400 text-sm mt-2 text-center">Biyografi henüz eklenmedi.</p>
                     
                     <div class="flex gap-6 mt-6 w-full justify-center text-center border-t border-white/10 pt-4">
-                        <div><div class="font-bold text-xl" id="profile-posts-count">0</div><div class="text-xs text-gray-400">Gönderi</div></div>
-                        <div><div class="font-bold text-xl">1.2B</div><div class="text-xs text-gray-400">Takipçi</div></div>
-                        <div><div class="font-bold text-xl">42</div><div class="text-xs text-gray-400">Takip</div></div>
+                        <div><div class="font-bold text-xl" id="my-posts-count">0</div><div class="text-xs text-gray-400">Gönderi</div></div>
+                        <div><div class="font-bold text-xl" id="my-followers-count">0</div><div class="text-xs text-gray-400">Takipçi</div></div>
+                        <div><div class="font-bold text-xl" id="my-following-count">0</div><div class="text-xs text-gray-400">Takip</div></div>
                     </div>
 
                     <div class="mt-6 w-full space-y-3">
@@ -132,12 +140,58 @@
                                 <div class="w-4 h-4 bg-white rounded-full absolute top-0.5 left-0.5 transition-transform duration-300 transform"></div>
                             </div>
                         </button>
-                        <button onclick="logout()" class="w-full glass-panel py-2 rounded-xl text-red-400 flex items-center justify-center gap-2 hover:bg-red-500/20 transition">
-                            <i class="ph ph-sign-out"></i> Çıkış Yap
-                        </button>
                     </div>
                 </div>
             </div>
+
+            <!-- Settings View -->
+            <div id="view-settings" class="hidden h-full flex flex-col px-4 py-6">
+                <div class="flex items-center gap-3 mb-6">
+                    <i class="ph ph-arrow-left text-2xl cursor-pointer" onclick="switchTab('profile')"></i>
+                    <h2 class="text-xl font-semibold">Gelişmiş Ayarlar</h2>
+                </div>
+                
+                <div class="space-y-6 flex-1">
+                    <div class="glass-panel p-4 rounded-xl">
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Kullanıcı Adı</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="settings-username" class="glass-input rounded-lg px-3 py-2 flex-1 text-sm">
+                            <button onclick="changeUsername()" class="neon-btn px-4 rounded-lg text-sm font-semibold">Kaydet</button>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl">
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">E-Posta Adresi</label>
+                        <div class="flex gap-2">
+                            <input type="email" id="settings-email" class="glass-input rounded-lg px-3 py-2 flex-1 text-sm">
+                            <button onclick="changeEmail()" class="neon-btn px-4 rounded-lg text-sm font-semibold">Değiştir</button>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl">
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Yeni Parola</label>
+                        <div class="flex gap-2">
+                            <input type="password" id="settings-password" placeholder="En az 6 karakter" class="glass-input rounded-lg px-3 py-2 flex-1 text-sm">
+                            <button onclick="changePassword()" class="neon-btn px-4 rounded-lg text-sm font-semibold">Güncelle</button>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl">
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Bağlı Hesaplar</label>
+                        <button onclick="linkGoogleAccount()" class="w-full bg-white/10 hover:bg-white/20 transition py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 border border-white/20">
+                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-4 h-4"> Google Hesabını Bağla
+                        </button>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl">
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Oturum Güvenliği</label>
+                        <button onclick="togglePersistence()" class="w-full bg-transparent border border-pink-500 text-pink-500 hover:bg-pink-500 hover:text-white transition py-2 rounded-lg text-sm font-semibold flex items-center justify-between px-4">
+                            <span>Her girişte şifre sor</span>
+                            <i id="persistence-icon" class="ph ph-toggle-left text-2xl"></i>
+                        </button>
+                    </div>
+                    <button onclick="logout()" class="w-full glass-panel py-3 rounded-xl text-red-400 flex items-center justify-center gap-2 hover:bg-red-500/20 transition">
+                        <i class="ph ph-sign-out text-xl"></i> Hesaptan Çıkış Yap
+                    </button>
+                </div>
+            </div>
+
         </main>
 
         <nav class="glass-panel absolute bottom-0 w-full px-6 py-4 flex justify-between items-center rounded-t-3xl z-40">
@@ -161,13 +215,37 @@
                     <p id="op-bio" class="text-gray-400 text-sm mt-2 text-center"></p>
                     <div class="flex gap-6 mt-6 w-full justify-center text-center border-y border-white/10 py-4 mb-4">
                         <div><div class="font-bold text-xl" id="op-posts-count">0</div><div class="text-xs text-gray-400">Gönderi</div></div>
-                        <div><div class="font-bold text-xl">10K</div><div class="text-xs text-gray-400">Takipçi</div></div>
-                        <div><div class="font-bold text-xl">42</div><div class="text-xs text-gray-400">Takip</div></div>
+                        <div><div class="font-bold text-xl" id="op-followers-count">0</div><div class="text-xs text-gray-400">Takipçi</div></div>
+                        <div><div class="font-bold text-xl" id="op-following-count">0</div><div class="text-xs text-gray-400">Takip</div></div>
                     </div>
-                    <button id="op-follow-btn" class="w-full neon-btn py-2 rounded-xl font-semibold">Takip Et</button>
+                    <button id="op-follow-btn" class="w-full py-2 rounded-xl font-semibold transition"></button>
                 </div>
                 <div id="op-feed-container" class="mt-6 flex flex-col gap-4"></div>
             </div>
+        </div>
+
+        <!-- YORUMLAR MODALI -->
+        <div id="comments-modal" class="hidden absolute inset-0 bg-[#0f172a]/95 backdrop-blur-md z-[80] flex flex-col">
+            <div class="p-4 flex items-center gap-3 border-b border-white/10 glass-panel rounded-b-2xl">
+                <i class="ph ph-arrow-left text-2xl cursor-pointer" onclick="closeComments()"></i>
+                <h2 class="text-xl font-semibold">Yorumlar</h2>
+            </div>
+            <div id="comments-list" class="p-4 space-y-4 flex-1 overflow-y-auto"></div>
+            <div class="p-4 glass-panel rounded-t-2xl flex gap-2">
+                <input type="text" id="comment-input" placeholder="Yorum yaz..." onkeypress="if(event.key === 'Enter') addComment()" class="flex-1 glass-input rounded-full px-4 py-2 text-sm">
+                <button onclick="addComment()" class="neon-btn w-10 h-10 rounded-full flex items-center justify-center text-white">
+                    <i class="ph ph-paper-plane-tilt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- BİLDİRİMLER (TAKİP İSTEKLERİ) MODALI -->
+        <div id="notifications-modal" class="hidden absolute inset-0 bg-[#0f172a]/95 backdrop-blur-md z-[80] flex flex-col">
+            <div class="p-4 flex items-center gap-3 border-b border-white/10 glass-panel rounded-b-2xl">
+                <i class="ph ph-arrow-left text-2xl cursor-pointer" onclick="closeNotifications()"></i>
+                <h2 class="text-xl font-semibold">Bildirimler</h2>
+            </div>
+            <div id="notifications-list" class="p-4 space-y-3 flex-1 overflow-y-auto"></div>
         </div>
 
         <!-- GRUP KURMA MODALI -->
@@ -184,6 +262,7 @@
             </div>
         </div>
 
+        <!-- POST PAYLAŞMA MODALI -->
         <div id="post-modal" class="hidden absolute inset-0 bg-[#0f172a]/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
             <div class="glass-panel w-full max-w-sm rounded-2xl p-5 flex flex-col gap-4">
                 <div class="flex justify-between items-center border-b border-white/10 pb-3">
@@ -204,6 +283,7 @@
         </div>
     </div>
 
+    <!-- AUTH SCREEN -->
     <div id="auth-screen" class="max-w-md mx-auto h-screen flex flex-col items-center justify-center p-6 relative z-50">
         <div class="glass-panel p-8 rounded-3xl w-full text-center shadow-2xl relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-pink-500"></div>
@@ -245,6 +325,7 @@
         };
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : localFirebaseConfig;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'npmsocial-17d87';
+        const geminiApiKey = "";
 
         let app, auth, db, storage, rtdb;
         try {
@@ -256,20 +337,14 @@
         } catch(e) { console.error("Firebase init error:", e); }
 
         const state = { 
-            currentUser: null, userData: null, allUsers: [], posts: [], messages: [], groups: [], presence: {}, activeChatUserId: null, isGroupChat: false 
+            currentUser: null, userData: null, allUsers: [], posts: [], messages: [], groups: [], 
+            followers: [], followRequests: [], comments: [],
+            presence: {}, activeChatUserId: null, isGroupChat: false, viewingProfileUid: null, activePostId: null
         };
 
-        const MOCK_USERS = [
-            { uid: 'mock_1', username: 'Neon_Ninja', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Neon_Ninja', isPrivate: false, bio: 'Siber uzayda geziyorum.' },
-            { uid: 'mock_2', username: 'Cyber_Girl', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Cyber_Girl', isPrivate: true, bio: 'Gizli sistem protokolü devrede.' },
-            { uid: 'mock_3', username: 'Dev_Master', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Dev_Master', isPrivate: false, bio: 'En iyi kodu ben yazarım.' }
-        ];
-
-        const MOCK_POSTS = [
-            { id: 'm1', authorId: 'mock_1', text: 'NPM Social ağına hoş geldin! İlk gönderini paylaşmak için aşağıdaki + butonuna tıkla. 🔥', imageUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=500&auto=format&fit=crop', timestamp: { toMillis: () => Date.now(), toDate: () => new Date() } },
-            { id: 'm2', authorId: 'mock_3', text: 'Düz yazı postları da artık sorunsuz çalışıyor. Sadece yazı yaz ve Paylaş butonuna bas!', imageUrl: null, timestamp: { toMillis: () => Date.now()-30000, toDate: () => new Date(Date.now()-30000) } },
-            { id: 'm3', authorId: 'mock_2', text: 'Benim hesabım gizli. Takip etmeden gönderilerimi göremezsiniz.', imageUrl: null, timestamp: { toMillis: () => Date.now()-60000, toDate: () => new Date(Date.now()-60000) } }
-        ];
+        const GEMINI_BOT = {
+            uid: 'gemini_bot', username: '✨ Gemini AI', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Gemini&baseColor=ec4899', isPrivate: false, bio: 'NPM Social Yapay Zeka Asistanı'
+        };
 
         function showToast(msg, isError = true) {
             let toast = document.getElementById('toast');
@@ -281,14 +356,10 @@
 
         let authMode = 'login';
         
-        // HATA ÇÖZÜMÜ: Sadece popup açar, profil veritabanı kontrolünü asıl yükleyiciye (loadUserProfile) devrederek yarış durumunu (race condition) ortadan kaldırır.
         async function loginWithGoogle() {
             const provider = new firebase.auth.GoogleAuthProvider();
-            try {
-                await auth.signInWithPopup(provider);
-            } catch (error) { 
-                showToast("Google Giriş Hatası: " + error.message, true); 
-            }
+            try { await auth.signInWithPopup(provider); } 
+            catch (error) { showToast("Google Giriş Hatası: " + error.message, true); }
         }
 
         function toggleAuthMode(mode) {
@@ -305,7 +376,6 @@
             msgEl.innerText = msg; msgEl.className = `text-sm mt-4 block font-semibold ${isError ? 'text-red-400' : 'text-green-400'}`; msgEl.classList.remove('hidden');
         }
 
-        // HATA ÇÖZÜMÜ: Firebase Auth'dan dönen gerçek hata kodlarını yakalayıp ekranda Türkçe ve detaylı gösterir.
         async function handleAuth() {
             const email = document.getElementById('auth-email').value.trim(); const password = document.getElementById('auth-password').value; const btn = document.getElementById('auth-action-btn');
             if (!email || !password) return showAuthMessage('Lütfen bilgileri eksiksiz girin.', true);
@@ -326,13 +396,15 @@
                 let hataMesaji = "İşlem başarısız: " + error.message;
                 if(error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') hataMesaji = "E-posta veya şifre hatalı.";
                 if(error.code === 'auth/email-already-in-use') hataMesaji = "Bu e-posta adresi zaten kullanımda.";
-                if(error.code === 'auth/weak-password') hataMesaji = "Şifre çok zayıf (en az 6 karakter).";
                 showAuthMessage(hataMesaji, true); 
             } 
             finally { btn.disabled = false; btn.innerText = authMode === 'login' ? 'GİRİŞ YAP' : 'KAYIT OL'; }
         }
 
         async function initApp() {
+            const persistenceType = localStorage.getItem('npm_persistence') === 'session' ? firebase.auth.Auth.Persistence.SESSION : firebase.auth.Auth.Persistence.LOCAL;
+            await auth.setPersistence(persistenceType);
+            
             auth.onAuthStateChanged(async (user) => {
                 if (user && (user.emailVerified || user.providerData.some(p => p.providerId === 'google.com'))) {
                     state.currentUser = user; 
@@ -344,7 +416,6 @@
             });
         }
 
-        // HATA ÇÖZÜMÜ: Eğer Realtime DB veritabanın aktif değilse, presence sistemi tüm uygulamayı çökertmemesi için try-catch ile koruma altına alındı.
         async function setupPresence() {
             if (!state.currentUser) return;
             try {
@@ -356,42 +427,31 @@
                     userStatusRef.onDisconnect().set(isOfflineForDatabase).then(function() { userStatusRef.set(isOnlineForDatabase); });
                 });
                 rtdb.ref(`/artifacts/${appId}/presence`).on('value', (snapshot) => { state.presence = snapshot.val() || {}; renderUsersList(); });
-            } catch (error) {
-                console.warn("Çevrimiçi sistemi başlatılamadı (Realtime DB aktif olmayabilir):", error);
-            }
+            } catch (error) { console.warn("Çevrimiçi sistemi başlatılamadı:", error); }
         }
 
-        // HATA ÇÖZÜMÜ: Profil yoksa sessizce kalmak yerine, varsa günceller, yoksa (Google Login ilk giriş gibi) profili güvenli şekilde oluşturup öyle uygulamayı açar.
         async function loadUserProfile() {
             try {
                 const userRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid);
                 let doc = await userRef.get();
 
                 if (!doc.exists) {
-                    // Hesap var ama Firestore profili yoksa (Google ilk girişi)
                     const user = state.currentUser;
                     const username = user.displayName || user.email?.split('@')[0] || 'Kullanıcı';
                     await userRef.set({
-                        uid: user.uid,
-                        username: username,
-                        avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
-                        bio: "NPM Social'a katıldı.",
-                        isPrivate: false,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        uid: user.uid, username: username, avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`, bio: "NPM Social'a katıldı.", isPrivate: false, createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    doc = await userRef.get(); // Veriyi tekrar çek
+                    doc = await userRef.get(); 
                 }
 
                 if (doc.exists) {
                     state.userData = doc.data();
                     document.getElementById('auth-screen').classList.add('hidden'); document.getElementById('auth-screen').classList.remove('flex'); document.getElementById('app').classList.remove('hidden');
                     document.getElementById('current-user-avatar-mini').src = state.userData.avatar; document.getElementById('profile-avatar').src = state.userData.avatar; document.getElementById('profile-username').innerText = state.userData.username;
-                    updatePrivateUI(); listenToData(); handleSearch(); 
+                    document.getElementById('settings-username').value = state.userData.username; document.getElementById('settings-email').value = state.currentUser.email;
+                    updatePrivateUI(); updatePersistenceUI(); listenToData(); handleSearch(); 
                 }
-            } catch (error) {
-                console.error("Profil Yükleme Hatası:", error);
-                showAuthMessage("Sunucu Hatası: Firestore veritabanı kurallarınızı kontrol edin.", true);
-            }
+            } catch (error) { showToast("Sunucu Hatası: Firestore veritabanı kurallarınızı kontrol edin.", true); }
         }
 
         function logout() { auth.signOut(); window.location.reload(); }
@@ -399,15 +459,116 @@
         function listenToData() {
             try {
                 const dataRef = db.collection('artifacts').doc(appId).collection('public').doc('data');
-                dataRef.collection('users').onSnapshot(snap => { state.allUsers = snap.docs.map(doc => doc.data()); renderStories(); renderUsersList(); handleSearch(); }, err => console.warn("Kullanıcıları dinleme hatası", err));
-                dataRef.collection('posts').onSnapshot(snap => { state.posts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0)); renderFeed(); }, err => console.warn("Post dinleme hatası", err));
-                dataRef.collection('messages').onSnapshot(snap => { state.messages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0)); if (state.activeChatUserId) renderChatMessages(); }, err => console.warn("Mesaj dinleme hatası", err));
-                dataRef.collection('groups').onSnapshot(snap => { state.groups = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderUsersList(); }, err => console.warn("Grup dinleme hatası", err));
-            } catch (error) {
-                console.warn("Veri dinleyiciler başlatılamadı:", error);
-            }
+                dataRef.collection('users').onSnapshot(snap => { state.allUsers = snap.docs.map(doc => doc.data()); renderStories(); renderUsersList(); handleSearch(); renderOtherProfileContent(); }, err => console.warn(err));
+                dataRef.collection('posts').onSnapshot(snap => { state.posts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0)); renderFeed(); renderOtherProfileContent(); updateMyProfileStats(); }, err => console.warn(err));
+                dataRef.collection('messages').onSnapshot(snap => { state.messages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0)); if (state.activeChatUserId) renderChatMessages(); }, err => console.warn(err));
+                dataRef.collection('groups').onSnapshot(snap => { state.groups = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderUsersList(); }, err => console.warn(err));
+                
+                // TAKİP LİSTELERİNİ DİNLEME
+                dataRef.collection('followers').onSnapshot(snap => { state.followers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderOtherProfileContent(); renderFeed(); updateMyProfileStats(); }, err => console.warn(err));
+                dataRef.collection('followRequests').onSnapshot(snap => { state.followRequests = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderOtherProfileContent(); updateNotificationBadge(); renderNotifications(); }, err => console.warn(err));
+                
+                // YORUMLARI DİNLEME
+                dataRef.collection('comments').onSnapshot(snap => { state.comments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderFeed(); renderOtherProfileContent(); if (state.activePostId) renderComments(); }, err => console.warn(err));
+            } catch (error) { console.warn("Veri dinleyiciler başlatılamadı:", error); }
         }
 
+        // --- TAKİP & İSTEK SİSTEMİ MİMARİSİ ---
+        async function handleFollowAction(targetUid, isPrivate) {
+            const myId = state.currentUser.uid;
+            const existingFollow = state.followers.find(f => f.followerId === myId && f.followingId === targetUid);
+            const existingReq = state.followRequests.find(r => r.senderId === myId && r.receiverId === targetUid);
+
+            const dataRef = db.collection('artifacts').doc(appId).collection('public').doc('data');
+            
+            try {
+                if (existingFollow) {
+                    await dataRef.collection('followers').doc(existingFollow.id).delete();
+                    showToast("Takipten çıkıldı.", false);
+                } else if (existingReq) {
+                    await dataRef.collection('followRequests').doc(existingReq.id).delete();
+                    showToast("Takip isteği geri çekildi.", false);
+                } else {
+                    if (isPrivate) {
+                        await dataRef.collection('followRequests').add({ senderId: myId, receiverId: targetUid, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                        showToast("Takip isteği gönderildi.", false);
+                    } else {
+                        await dataRef.collection('followers').add({ followerId: myId, followingId: targetUid, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                        showToast("Takip edilmeye başlandı!", false);
+                    }
+                }
+            } catch (error) { showToast("İşlem başarısız oldu.", true); }
+        }
+
+        // BİLDİRİMLER (TAKİP ONAY/RED) SİSTEMİ
+        function openNotifications() {
+            document.getElementById('notifications-modal').classList.remove('hidden');
+            renderNotifications();
+        }
+
+        function closeNotifications() {
+            document.getElementById('notifications-modal').classList.add('hidden');
+        }
+
+        function updateNotificationBadge() {
+            const badge = document.getElementById('notif-badge');
+            const myRequests = state.followRequests.filter(r => r.receiverId === state.currentUser?.uid);
+            if (myRequests.length > 0) badge.classList.remove('hidden');
+            else badge.classList.add('hidden');
+        }
+
+        function renderNotifications() {
+            const container = document.getElementById('notifications-list');
+            if(!container) return;
+            container.innerHTML = '';
+            const myRequests = state.followRequests.filter(r => r.receiverId === state.currentUser?.uid);
+
+            if (myRequests.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-6 text-sm">Yeni bildirim veya takip isteği yok.</div>';
+                return;
+            }
+
+            myRequests.forEach(req => {
+                const sender = getUser(req.senderId);
+                container.innerHTML += `
+                    <div class="glass-panel p-3 rounded-xl flex items-center justify-between gap-3">
+                        <img src="${sender.avatar}" class="w-10 h-10 rounded-full object-cover cursor-pointer" onclick="closeNotifications(); openOtherProfile('${sender.uid}')">
+                        <div class="flex-1">
+                            <span class="font-semibold text-sm cursor-pointer hover:text-pink-400 transition" onclick="closeNotifications(); openOtherProfile('${sender.uid}')">${sender.username}</span>
+                            <p class="text-[10px] text-gray-400">Takip isteği gönderdi</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="acceptRequest('${req.id}', '${sender.uid}')" class="w-8 h-8 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center hover:bg-green-500 hover:text-white transition"><i class="ph-bold ph-check"></i></button>
+                            <button onclick="rejectRequest('${req.id}')" class="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition"><i class="ph-bold ph-x"></i></button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        async function acceptRequest(reqId, senderId) {
+            const dataRef = db.collection('artifacts').doc(appId).collection('public').doc('data');
+            try {
+                await dataRef.collection('followers').add({ followerId: senderId, followingId: state.currentUser.uid, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                await dataRef.collection('followRequests').doc(reqId).delete();
+                showToast("İstek onaylandı.", false);
+            } catch (e) { showToast("Onaylanırken hata oluştu.", true); }
+        }
+
+        async function rejectRequest(reqId) {
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('followRequests').doc(reqId).delete();
+            } catch (e) { showToast("Hata oluştu.", true); }
+        }
+
+        function updateMyProfileStats() {
+            if(!state.currentUser) return;
+            const myId = state.currentUser.uid;
+            document.getElementById('my-posts-count').innerText = state.posts.filter(p => p.authorId === myId).length;
+            document.getElementById('my-followers-count').innerText = state.followers.filter(f => f.followingId === myId).length;
+            document.getElementById('my-following-count').innerText = state.followers.filter(f => f.followerId === myId).length;
+        }
+
+        // --- POST & MEDYA SİSTEMİ ---
         let selectedFile = null;
         function openPostModal() { document.getElementById('post-modal').classList.remove('hidden'); selectedFile = null; document.getElementById('post-image-file').value = ''; document.getElementById('file-name-display').innerText = 'Galeriden Fotoğraf Seç (Opsiyonel)'; document.getElementById('image-preview').classList.add('hidden'); }
         function closePostModal() { document.getElementById('post-modal').classList.add('hidden'); }
@@ -431,10 +592,11 @@
                     const storageRef = storage.ref(`artifacts/${appId}/public/posts/${Date.now()}_${selectedFile.name}`);
                     const uploadTask = await storageRef.put(selectedFile); imageUrl = await uploadTask.ref.getDownloadURL();
                 }
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('posts').add({ authorId: state.currentUser.uid, text: text, imageUrl: imageUrl, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('posts').add({ authorId: state.currentUser.uid, text: text, imageUrl: imageUrl, likes: [], timestamp: firebase.firestore.FieldValue.serverTimestamp() });
                 document.getElementById('post-text').value = ''; closePostModal(); showToast("Gönderi başarıyla paylaşıldı!", false);
-            } catch (error) { showToast("Yükleme başarısız! Firebase Storage kurallarını kontrol et."); } 
-            finally { btn.innerText = "Paylaş"; btn.disabled = false; }
+            } catch (error) { 
+                console.error(error); showToast("Yükleme başarısız! Hata: " + error.message, true); 
+            } finally { btn.innerText = "Paylaş"; btn.disabled = false; }
         }
 
         async function updateProfilePicture(event) {
@@ -444,15 +606,113 @@
                 const uploadTask = await storageRef.put(file); const newAvatarUrl = await uploadTask.ref.getDownloadURL();
                 await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).update({ avatar: newAvatarUrl });
                 state.userData.avatar = newAvatarUrl; document.getElementById('profile-avatar').src = newAvatarUrl; document.getElementById('current-user-avatar-mini').src = newAvatarUrl; showToast("Profil fotoğrafı güncellendi!", false);
-            } catch (error) { showToast("Fotoğraf yüklenemedi!"); }
+            } catch (error) { 
+                console.error(error); showToast("Fotoğraf yüklenemedi! Hata: " + error.message, true); 
+            }
         }
 
-        function getUser(uid) { let user = state.allUsers.find(u => u.uid === uid); if (!user) user = MOCK_USERS.find(u => u.uid === uid); return user || { username: 'Bilinmeyen', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=x' }; }
+        function getUser(uid) { 
+            if (uid === 'gemini_bot') return GEMINI_BOT;
+            return state.allUsers.find(u => u.uid === uid) || { username: 'Bilinmeyen', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=x' }; 
+        }
 
+        // --- BEĞENİ VE YORUM SİSTEMİ ---
+        async function toggleLike(postId) {
+            if (!state.currentUser) return;
+            const postRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('posts').doc(postId);
+            const post = state.posts.find(p => p.id === postId);
+            if (!post) return;
+
+            const myId = state.currentUser.uid;
+            let newLikes = post.likes || [];
+            
+            if (newLikes.includes(myId)) {
+                newLikes = newLikes.filter(id => id !== myId);
+            } else {
+                newLikes.push(myId);
+            }
+
+            try {
+                await postRef.update({ likes: newLikes });
+            } catch (error) {
+                showToast("Beğeni işlemi başarısız.", true);
+            }
+        }
+
+        function openComments(postId) {
+            state.activePostId = postId;
+            document.getElementById('comments-modal').classList.remove('hidden');
+            renderComments();
+        }
+
+        function closeComments() {
+            state.activePostId = null;
+            document.getElementById('comments-modal').classList.add('hidden');
+        }
+
+        function renderComments() {
+            if (!state.activePostId) return;
+            const container = document.getElementById('comments-list');
+            container.innerHTML = '';
+            
+            const postComments = state.comments.filter(c => c.postId === state.activePostId).sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+            
+            if (postComments.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-10 text-sm">İlk yorumu sen yap!</div>';
+                return;
+            }
+
+            postComments.forEach(comment => {
+                const author = getUser(comment.authorId);
+                const timeStr = comment.timestamp?.toDate ? new Date(comment.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Şimdi';
+                
+                container.innerHTML += `
+                    <div class="flex gap-3">
+                        <img src="${author.avatar}" class="w-8 h-8 rounded-full object-cover mt-1 cursor-pointer" onclick="closeComments(); openOtherProfile('${author.uid}')">
+                        <div class="flex-1 bg-white/5 rounded-xl p-3">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-semibold text-sm hover:text-pink-400 cursor-pointer transition" onclick="closeComments(); openOtherProfile('${author.uid}')">${author.username}</span>
+                                <span class="text-[10px] text-gray-400">${timeStr}</span>
+                            </div>
+                            <p class="text-sm text-gray-200">${comment.text}</p>
+                        </div>
+                    </div>`;
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function addComment() {
+            const input = document.getElementById('comment-input');
+            const text = input.value.trim();
+            if (!text || !state.activePostId) return;
+            
+            input.value = '';
+            
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('comments').add({
+                    postId: state.activePostId,
+                    authorId: state.currentUser.uid,
+                    text: text,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (error) {
+                showToast("Yorum eklenemedi.", true);
+            }
+        }
+
+        // --- RENDER SİSTEMLERİ ---
         function renderUsersList() {
             const container = document.getElementById('users-list'); container.innerHTML = '';
             
-            // Grupları listele (Eğer üyesiysek)
+            const geminiEl = document.createElement('div');
+            geminiEl.className = 'glass-panel rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:bg-white/10 transition border border-pink-500/50';
+            geminiEl.onclick = () => openChat(GEMINI_BOT.uid, false, GEMINI_BOT.username, GEMINI_BOT.avatar);
+            geminiEl.innerHTML = `
+                <div class="relative"><img src="${GEMINI_BOT.avatar}" class="w-12 h-12 rounded-full bg-gray-800 object-cover"><div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-[#0f172a] online-dot"></div></div>
+                <div class="flex-1"><h4 class="font-semibold text-sm text-pink-400">${GEMINI_BOT.username}</h4><p class="text-xs text-gray-400">Yapay Zeka Asistanı</p></div>
+                <i class="ph-fill ph-sparkle text-2xl text-pink-400"></i>`;
+            container.appendChild(geminiEl);
+
             const myGroups = state.groups.filter(g => g.members.includes(state.currentUser.uid));
             myGroups.forEach(group => {
                 const el = document.createElement('div');
@@ -465,10 +725,7 @@
                 container.appendChild(el);
             });
 
-            // Kullanıcıları listele
             let others = state.allUsers.filter(u => u.uid !== state.currentUser?.uid);
-            if (others.length === 0) others = MOCK_USERS;
-
             others.forEach(user => {
                 const isOnline = state.presence[user.uid]?.state === 'online';
                 const dotHtml = isOnline ? `<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-[#0f172a] online-dot"></div>` : '';
@@ -485,9 +742,19 @@
 
         function renderFeed() {
             const container = document.getElementById('feed-container'); container.innerHTML = '';
-            // Veritabanındaki postlar ve mock postları birleştir
-            let displayPosts = [...state.posts, ...MOCK_POSTS];
-            displayPosts.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+            
+            // Gizlilik Filtresi: Sadece takip ettiklerim, kendi postlarım veya gizli olmayan hesaplar görünür.
+            let displayPosts = state.posts.filter(post => {
+                if (post.authorId === state.currentUser?.uid) return true;
+                const author = getUser(post.authorId);
+                if (!author.isPrivate) return true;
+                return state.followers.some(f => f.followerId === state.currentUser?.uid && f.followingId === post.authorId);
+            });
+
+            if(displayPosts.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-500 py-10 flex flex-col items-center"><i class="ph ph-camera-slash text-4xl mb-2 text-white/20"></i>Ağda henüz gösterilecek gönderi yok.</div>`;
+                return;
+            }
 
             displayPosts.forEach(post => {
                 const author = getUser(post.authorId);
@@ -496,6 +763,11 @@
                 const privateBadge = author.isPrivate ? `<i class="ph-fill ph-lock-key text-pink-500 ml-1 text-xs"></i>` : '';
                 const imgHtml = post.imageUrl ? `<img src="${post.imageUrl}" class="w-full h-auto mt-3 rounded-lg object-cover max-h-96">` : '';
                 const timeStr = post.timestamp?.toDate ? new Date(post.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Az önce';
+
+                const likesCount = (post.likes || []).length;
+                const isLiked = (post.likes || []).includes(state.currentUser?.uid);
+                const likeIconClass = isLiked ? 'ph-fill ph-heart text-pink-500' : 'ph ph-heart hover:text-pink-500 transition';
+                const commentsCount = state.comments.filter(c => c.postId === post.id).length;
 
                 const postEl = document.createElement('div');
                 postEl.className = 'glass-panel rounded-2xl p-4 transition hover:bg-white/5';
@@ -511,9 +783,13 @@
                     </div>
                     <p class="text-sm font-light text-gray-200">${post.text.replace(/\n/g, '<br>')}</p>
                     ${imgHtml}
-                    <div class="flex gap-6 mt-4 text-gray-400">
-                        <div class="flex items-center gap-1 hover:text-pink-500 cursor-pointer transition"><i class="ph ph-heart text-xl"></i></div>
-                        <div class="flex items-center gap-1 hover:text-cyan-400 cursor-pointer transition" onclick="showToast('Yorum özelliği yükleniyor...', false)"><i class="ph ph-chat-circle text-xl"></i></div>
+                    <div class="flex gap-6 mt-4 text-gray-400 select-none">
+                        <div class="flex items-center gap-1 cursor-pointer" onclick="toggleLike('${post.id}')">
+                            <i class="${likeIconClass} text-xl"></i> <span class="text-sm font-semibold ${isLiked ? 'text-pink-500' : ''}">${likesCount > 0 ? likesCount : ''}</span>
+                        </div>
+                        <div class="flex items-center gap-1 cursor-pointer hover:text-cyan-400 transition" onclick="openComments('${post.id}')">
+                            <i class="ph ph-chat-circle text-xl"></i> <span class="text-sm font-semibold">${commentsCount > 0 ? commentsCount : ''}</span>
+                        </div>
                     </div>`;
                 container.appendChild(postEl);
             });
@@ -523,7 +799,8 @@
             let html = `<div class="flex flex-col items-center gap-1 cursor-pointer min-w-[70px]" onclick="showToast('Story atma özelliği çok yakında eklenecek! 🚀', false)">
                     <div class="story-ring p-0.5 relative"><img src="${state.userData?.avatar}" class="w-16 h-16 rounded-full border-2 border-[#0f172a] object-cover"><div class="absolute bottom-0 right-0 bg-pink-500 rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#0f172a]"><i class="ph ph-plus text-white text-xs"></i></div></div>
                     <span class="text-xs text-gray-300">Hikayen</span></div>`;
-            let others = state.allUsers.filter(u => u.uid !== state.currentUser?.uid); if (others.length === 0) others = MOCK_USERS;
+            
+            let others = state.allUsers.filter(u => u.uid !== state.currentUser?.uid);
             others.slice(0, 10).forEach(user => { 
                 html += `<div class="flex flex-col items-center gap-1 cursor-pointer min-w-[70px]" onclick="openOtherProfile('${user.uid}')">
                         <div class="story-ring p-0.5"><img src="${user.avatar}" class="w-16 h-16 rounded-full border-2 border-[#0f172a] object-cover"></div>
@@ -532,13 +809,10 @@
             document.getElementById('stories-container').innerHTML = html;
         }
 
-        // Arama (Keşfet) Sistemi
         function handleSearch() {
             const query = document.getElementById('search-input').value.toLowerCase();
             const container = document.getElementById('search-results'); container.innerHTML = '';
-            let all = [...state.allUsers.filter(u => u.uid !== state.currentUser?.uid), ...MOCK_USERS];
-            
-            // Eğer arama kutusu boşsa rastgele birkaç kişiyi keşfet gibi göster, doluysa filtrele
+            let all = state.allUsers.filter(u => u.uid !== state.currentUser?.uid);
             let results = query ? all.filter(u => u.username.toLowerCase().includes(query)) : all.slice(0, 5);
 
             if(results.length === 0) { container.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Sonuç bulunamadı.</div>'; return; }
@@ -554,44 +828,77 @@
             });
         }
 
-        // Diğer Profili Görüntüleme ve Takip İsteği Sistemi
         function openOtherProfile(uid) {
             if (uid === state.currentUser?.uid) return switchTab('profile');
+            state.viewingProfileUid = uid;
+            document.getElementById('other-profile-modal').classList.remove('hidden');
+            renderOtherProfileContent();
+        }
+
+        function closeOtherProfile() { 
+            state.viewingProfileUid = null;
+            document.getElementById('other-profile-modal').classList.add('hidden'); 
+        }
+
+        function renderOtherProfileContent() {
+            if (!state.viewingProfileUid) return;
+            const uid = state.viewingProfileUid;
+            const myId = state.currentUser?.uid;
             const user = getUser(uid);
+            
+            const isFollowing = state.followers.some(f => f.followerId === myId && f.followingId === uid);
+            const isRequested = state.followRequests.some(r => r.senderId === myId && r.receiverId === uid);
+
             document.getElementById('op-avatar').src = user.avatar;
             document.getElementById('op-username').innerHTML = `${user.username} ${user.isPrivate ? '<i class="ph-fill ph-lock-key text-pink-500 ml-1 text-xl" title="Gizli Hesap"></i>' : ''}`;
             document.getElementById('op-username-top').innerText = user.username;
             document.getElementById('op-bio').innerText = user.bio || "Biyografi yok.";
             
-            const btn = document.getElementById('op-follow-btn');
-            btn.onclick = () => {
-                if (user.isPrivate) showToast("Gizli hesap! Takip isteği gönderildi.", false);
-                else showToast(`${user.username} artık takip ediliyor!`, false);
-                btn.innerText = user.isPrivate ? "İstek Gönderildi" : "Takip Ediliyor";
-                btn.className = "w-full bg-white/10 py-2 rounded-xl font-semibold text-gray-300";
-            };
+            const userPosts = state.posts.filter(p => p.authorId === uid);
+            document.getElementById('op-posts-count').innerText = userPosts.length;
+            document.getElementById('op-followers-count').innerText = state.followers.filter(f => f.followingId === uid).length;
+            document.getElementById('op-following-count').innerText = state.followers.filter(f => f.followerId === uid).length;
 
-            const container = document.getElementById('op-feed-container'); container.innerHTML = '';
+            const btn = document.getElementById('op-follow-btn');
             
-            if (user.isPrivate) {
-                container.innerHTML = `<div class="text-center py-10 flex flex-col items-center"><div class="w-16 h-16 rounded-full border-2 border-pink-500 flex items-center justify-center mb-3"><i class="ph ph-lock-key text-3xl text-pink-500"></i></div><h3 class="font-semibold text-lg">Bu Hesap Gizli</h3><p class="text-sm text-gray-400 mt-1">Fotoğraf ve videolarını görmek için onu takip et.</p></div>`;
+            // Dinamik Buton Yapısı
+            if (isFollowing) {
+                btn.innerText = "Takip Ediliyor";
+                btn.className = "w-full bg-white/10 py-2 rounded-xl font-semibold text-gray-300 hover:bg-red-500/20 hover:text-red-400 transition";
+            } else if (isRequested) {
+                btn.innerText = "İstek Gönderildi";
+                btn.className = "w-full bg-white/10 py-2 rounded-xl font-semibold text-gray-300 hover:bg-white/20 transition";
             } else {
-                let userPosts = [...state.posts, ...MOCK_POSTS].filter(p => p.authorId === uid);
+                let userPosts = state.posts.filter(p => p.authorId === uid);
                 document.getElementById('op-posts-count').innerText = userPosts.length;
                 if(userPosts.length === 0) container.innerHTML = `<div class="text-center text-gray-500 py-10">Gönderi yok.</div>`;
                 userPosts.forEach(post => {
+                    const likesCount = (post.likes || []).length;
+                    const isLiked = (post.likes || []).includes(state.currentUser?.uid);
+                    const likeIconClass = isLiked ? 'ph-fill ph-heart text-pink-500' : 'ph ph-heart hover:text-pink-500 transition';
+                    const commentsCount = state.comments.filter(c => c.postId === post.id).length;
                     const imgHtml = post.imageUrl ? `<img src="${post.imageUrl}" class="w-full h-auto mt-2 rounded-lg object-cover">` : '';
-                    container.innerHTML += `<div class="glass-panel rounded-2xl p-4"><p class="text-sm font-light text-gray-200">${post.text}</p>${imgHtml}</div>`;
+                    
+                    container.innerHTML += `
+                        <div class="glass-panel rounded-2xl p-4 mb-4">
+                            <p class="text-sm font-light text-gray-200">${post.text.replace(/\n/g, '<br>')}</p>
+                            ${imgHtml}
+                            <div class="flex gap-6 mt-4 text-gray-400 select-none">
+                                <div class="flex items-center gap-1 cursor-pointer" onclick="toggleLike('${post.id}')">
+                                    <i class="${likeIconClass} text-xl"></i> <span class="text-sm font-semibold ${isLiked ? 'text-pink-500' : ''}">${likesCount > 0 ? likesCount : ''}</span>
+                                </div>
+                                <div class="flex items-center gap-1 cursor-pointer hover:text-cyan-400 transition" onclick="openComments('${post.id}')">
+                                    <i class="ph ph-chat-circle text-xl"></i> <span class="text-sm font-semibold">${commentsCount > 0 ? commentsCount : ''}</span>
+                                </div>
+                            </div>
+                        </div>`;
                 });
             }
-            document.getElementById('other-profile-modal').classList.remove('hidden');
         }
-        function closeOtherProfile() { document.getElementById('other-profile-modal').classList.add('hidden'); }
 
-        // Grup Mesajlaşma Sistemi
         function openGroupModal() {
             const container = document.getElementById('group-users-list'); container.innerHTML = '';
-            let others = state.allUsers.filter(u => u.uid !== state.currentUser?.uid); if (others.length === 0) others = MOCK_USERS;
+            let others = state.allUsers.filter(u => u.uid !== state.currentUser?.uid);
             others.forEach(user => {
                 container.innerHTML += `<label class="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg cursor-pointer"><input type="checkbox" value="${user.uid}" class="group-checkbox form-checkbox h-4 w-4 text-pink-500 rounded bg-gray-800 border-gray-600 focus:ring-pink-500 focus:ring-offset-gray-900"><img src="${user.avatar}" class="w-8 h-8 rounded-full"><span class="text-sm">${user.username}</span></label>`;
             });
@@ -602,8 +909,8 @@
         async function createGroup() {
             const name = document.getElementById('group-name').value.trim();
             const checkedBoxes = document.querySelectorAll('.group-checkbox:checked');
-            if (!name) return showToast("Grup adı girmelisin.");
-            if (checkedBoxes.length === 0) return showToast("En az 1 kişi seçmelisin.");
+            if (!name) return showToast("Grup adı girmelisin.", true);
+            if (checkedBoxes.length === 0) return showToast("En az 1 kişi seçmelisin.", true);
             
             const members = [state.currentUser.uid];
             checkedBoxes.forEach(cb => members.push(cb.value));
@@ -611,23 +918,107 @@
             try {
                 await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('groups').add({ name: name, members: members, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
                 closeGroupModal(); showToast("Grup başarıyla oluşturuldu!", false);
-            } catch(e) { showToast("Grup oluşturulamadı."); }
+            } catch(e) { showToast("Grup oluşturulamadı.", true); }
         }
 
-        // Navigation
         function switchTab(tab) {
-            ['feed', 'messages', 'profile', 'search'].forEach(t => document.getElementById(`view-${t}`).classList.add('hidden'));
-            document.querySelectorAll('nav button').forEach(b => { b.classList.remove('nav-active'); b.querySelector('i')?.classList.remove('ph-fill'); });
+            ['view-feed', 'view-messages', 'view-profile', 'view-search', 'view-settings'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
             
-            document.getElementById(`view-${tab}`).classList.remove('hidden');
-            document.getElementById(`nav-${tab}`).classList.add('nav-active'); document.getElementById(`nav-${tab}`).querySelector('i').classList.add('ph-fill');
+            ['nav-feed', 'nav-search', 'nav-messages', 'nav-profile'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) { btn.classList.remove('nav-active'); btn.querySelector('i')?.classList.remove('ph-fill'); }
+            });
+            
+            const activeView = document.getElementById(`view-${tab}`);
+            if (activeView) activeView.classList.remove('hidden');
+            
+            const activeNav = document.getElementById(`nav-${tab}`);
+            if (activeNav) {
+                activeNav.classList.add('nav-active'); 
+                activeNav.querySelector('i').classList.add('ph-fill');
+            }
             
             if (tab === 'messages') renderUsersList();
             if (tab === 'search') handleSearch();
-            if (tab === 'profile') document.getElementById('profile-posts-count').innerText = state.posts.filter(p => p.authorId === state.currentUser.uid).length;
+            if (tab === 'profile') updateMyProfileStats();
         }
 
-        // Messaging Engine
+        // AYARLAR (Settings) MENÜSÜ FONKSİYONLARI
+        function openSettings() { switchTab('settings'); }
+
+        async function changeUsername() {
+            const newName = document.getElementById('settings-username').value.trim();
+            if(!newName) return;
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).update({username: newName});
+                state.userData.username = newName;
+                document.getElementById('profile-username').innerText = newName;
+                showToast("Kullanıcı adı başarıyla güncellendi!", false);
+            } catch(e) { showToast("Güncellenemedi: " + e.message, true); }
+        }
+
+        async function changeEmail() {
+            const newEmail = document.getElementById('settings-email').value.trim();
+            if(!newEmail) return;
+            try {
+                await auth.currentUser.verifyBeforeUpdateEmail(newEmail);
+                showToast("Yeni e-postanıza onay bağlantısı gönderildi! Lütfen kontrol edin.", false);
+            } catch(e) {
+                if(e.code === 'auth/requires-recent-login') showToast("Güvenlik: İşlem için lütfen çıkış yapıp tekrar girin.", true);
+                else showToast("Hata: " + e.message, true);
+            }
+        }
+
+        async function changePassword() {
+            const newPass = document.getElementById('settings-password').value.trim();
+            if(!newPass || newPass.length < 6) return showToast("Şifre en az 6 karakter olmalı", true);
+            try {
+                await auth.currentUser.updatePassword(newPass);
+                showToast("Parola başarıyla değiştirildi!", false);
+                document.getElementById('settings-password').value = '';
+            } catch(e) {
+                if(e.code === 'auth/requires-recent-login') showToast("Güvenlik: İşlem için lütfen çıkış yapıp tekrar girin.", true);
+                else showToast("Hata: " + e.message, true);
+            }
+        }
+
+        async function linkGoogleAccount() {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                await auth.currentUser.linkWithPopup(provider);
+                showToast("Google hesabı başarıyla bağlandı!", false);
+            } catch(e) { showToast("Bağlama hatası: " + e.message, true); }
+        }
+
+        function togglePersistence() {
+            const isSession = localStorage.getItem('npm_persistence') === 'session';
+            if (isSession) {
+                localStorage.setItem('npm_persistence', 'local');
+                auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                showToast("Oturum kalıcılığı açık. Otomatik çıkış iptal.", false);
+            } else {
+                localStorage.setItem('npm_persistence', 'session');
+                auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+                showToast("Güvenlik aktif: Tarayıcı kapanınca çıkış yapılacak.", false);
+            }
+            updatePersistenceUI();
+        }
+
+        function updatePersistenceUI() {
+            const icon = document.getElementById('persistence-icon');
+            if(localStorage.getItem('npm_persistence') === 'session') {
+                icon.classList.replace('ph-toggle-left', 'ph-toggle-right');
+                icon.classList.add('text-pink-500');
+            } else {
+                icon.classList.replace('ph-toggle-right', 'ph-toggle-left');
+                icon.classList.remove('text-pink-500');
+            }
+        }
+
+        // MESAJLAŞMA & GEMINI AI BOT
         function openChat(targetId, isGroup = false, name = "Kullanıcı", avatarUrl = "") {
             state.activeChatUserId = targetId; state.isGroupChat = isGroup;
             document.getElementById('chat-avatar').src = isGroup ? "https://api.dicebear.com/7.x/initials/svg?seed=Grup" : avatarUrl;
@@ -643,10 +1034,8 @@
             let chatMsgs = [];
             
             if(state.isGroupChat) {
-                // Grupsa alıcısı grup ID'si olanları getir
                 chatMsgs = state.messages.filter(m => m.receiverId === targetId);
             } else {
-                // Birebir mesajsa aramızdaki mesajları getir
                 chatMsgs = state.messages.filter(m => (m.senderId === myId && m.receiverId === targetId) || (m.senderId === targetId && m.receiverId === myId));
             }
 
@@ -670,9 +1059,35 @@
         async function sendMessage() {
             const input = document.getElementById('chat-input'); const text = input.value.trim();
             if (!text || !state.activeChatUserId) return; input.value = '';
+            
             await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('messages').add({ senderId: state.currentUser.uid, receiverId: state.activeChatUserId, text: text, isGroup: state.isGroupChat, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+
+            if (state.activeChatUserId === 'gemini_bot') {
+                askGemini(text);
+            }
         }
         document.getElementById('chat-input').addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+
+        async function askGemini(prompt) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        systemInstruction: { parts: [{ text: "Sen NPM Social ağının resmi yapay zeka asistanısın. Adın Gemini. Türkçe, havalı ve samimi bir dille cevap ver. Mesajların kısa, teknolojik ve sosyal medyaya uygun olsun." }] }
+                    })
+                });
+                const data = await res.json();
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    const reply = data.candidates[0].content.parts[0].text;
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('messages').add({
+                        senderId: 'gemini_bot', receiverId: state.currentUser.uid, text: reply, isGroup: false, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            } catch(e) { console.error("Gemini Error:", e); showToast("Yapay zeka asistanı şu an meşgul.", true); }
+        }
 
         async function togglePrivate() {
             const newState = !state.userData.isPrivate;
@@ -684,7 +1099,7 @@
             const bg = document.getElementById('private-toggle-ui'); const dot = bg.firstElementChild;
             if (state.userData.isPrivate) { bg.classList.replace('bg-gray-600', 'bg-pink-500'); dot.classList.add('translate-x-5'); bg.style.boxShadow = "0 0 10px #ec4899"; } 
             else { bg.classList.replace('bg-pink-500', 'bg-gray-600'); dot.classList.remove('translate-x-5'); bg.style.boxShadow = "none"; }
-            renderFeed();
+            renderFeed(); renderOtherProfileContent(); // Feed ve Profil güncellenir
         }
 
         window.onload = () => initApp();
