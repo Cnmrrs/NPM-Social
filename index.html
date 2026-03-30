@@ -332,6 +332,18 @@
                 <button onclick="createPost()" id="share-btn" class="neon-btn py-3 rounded-xl font-semibold mt-2">Paylaş</button>
             </div>
         </div>
+        
+        <!-- ÖZEL ONAY (CONFIRM) MODALI -->
+        <div id="confirm-modal" class="hidden absolute inset-0 bg-[#0f172a]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <div class="glass-panel p-6 rounded-2xl max-w-sm w-full text-center">
+                <div class="w-16 h-16 rounded-full bg-red-500/20 text-red-500 mx-auto flex items-center justify-center text-3xl mb-4"><i class="ph-fill ph-warning"></i></div>
+                <h3 id="confirm-msg" class="text-lg font-semibold mb-6">Emin misin?</h3>
+                <div class="flex gap-4">
+                    <button onclick="closeConfirm()" class="flex-1 bg-white/10 hover:bg-white/20 py-3 rounded-xl transition font-semibold">İptal</button>
+                    <button id="confirm-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl transition font-semibold">Sil</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- AUTH SCREEN (2 Adımlı Doğrulama Eklendi) -->
@@ -402,12 +414,28 @@
             uid: 'gemini_bot', username: '✨ Gemini AI', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Gemini&baseColor=ec4899', isPrivate: false, bio: 'NPM Social Yapay Zeka Asistanı'
         };
 
+        // CUSTOM CONFIRM MODAL LOGIC
+        let confirmAction = null;
+        function askConfirm(msg, action) {
+            document.getElementById('confirm-msg').innerText = msg;
+            confirmAction = action;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+        function closeConfirm() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            confirmAction = null;
+        }
+        document.getElementById('confirm-btn').onclick = () => {
+            if(confirmAction) confirmAction();
+            closeConfirm();
+        };
+
         function showToast(msg, isError = true) {
             let toast = document.getElementById('toast');
             if (!toast) { toast = document.createElement('div'); toast.id = 'toast'; document.body.appendChild(toast); }
             toast.className = `fixed top-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl transition-all duration-300 z-[100] text-sm font-semibold backdrop-blur-md border ${isError ? 'bg-red-500/80 border-red-400 text-white' : 'bg-green-500/80 border-green-400 text-white'}`;
             toast.innerText = msg; toast.style.opacity = '1'; toast.style.pointerEvents = 'none';
-            setTimeout(() => toast.style.opacity = '0', 4000);
+            setTimeout(() => toast.style.opacity = '0', 5000);
         }
 
         let authMode = 'login';
@@ -433,7 +461,6 @@
             msgEl.innerText = msg; msgEl.className = `text-sm mt-4 block font-semibold ${isError ? 'text-red-400' : 'text-green-400'}`; msgEl.classList.remove('hidden');
         }
 
-        // 2 Adımlı Doğrulama - Sihirli Link Gönderme
         async function sendPasswordlessLink() {
             const email = document.getElementById('auth-email').value.trim();
             if (!email) return showAuthMessage('Lütfen e-posta adresinizi girin.', true);
@@ -474,7 +501,6 @@
         }
 
         async function initApp() {
-            // E-posta Linki İle Dönüş Yakalayıcısı (2 Adımlı Doğrulama için)
             if (auth.isSignInWithEmailLink(window.location.href)) {
                 let email = window.localStorage.getItem('emailForSignIn');
                 if (!email) email = window.prompt('Güvenlik onayı için e-posta adresinizi girin:');
@@ -533,7 +559,6 @@
                     document.getElementById('current-user-avatar-mini').src = state.userData.avatar; document.getElementById('profile-avatar').src = state.userData.avatar; document.getElementById('profile-username').innerText = state.userData.username;
                     document.getElementById('profile-bio').innerText = state.userData.bio || "Biyografi henüz eklenmedi.";
                     
-                    // Ayarlar Formunu Doldur
                     document.getElementById('settings-username').value = state.userData.username; 
                     document.getElementById('settings-email').value = state.currentUser.email;
                     document.getElementById('settings-bio').value = state.userData.bio || "";
@@ -552,22 +577,49 @@
                 dataRef.collection('posts').onSnapshot(snap => { state.posts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0)); renderFeed(); renderOtherProfileContent(); updateMyProfileStats(); }, err => console.warn(err));
                 dataRef.collection('messages').onSnapshot(snap => { state.messages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0)); if (state.activeChatUserId) renderChatMessages(); }, err => console.warn(err));
                 dataRef.collection('groups').onSnapshot(snap => { state.groups = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderUsersList(); }, err => console.warn(err));
-                
-                // TAKİP LİSTELERİNİ DİNLEME
                 dataRef.collection('followers').onSnapshot(snap => { state.followers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderOtherProfileContent(); renderFeed(); updateMyProfileStats(); }, err => console.warn(err));
                 dataRef.collection('followRequests').onSnapshot(snap => { state.followRequests = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderOtherProfileContent(); updateNotificationBadge(); renderNotifications(); }, err => console.warn(err));
-                
-                // YORUMLARI DİNLEME
                 dataRef.collection('comments').onSnapshot(snap => { state.comments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderFeed(); renderOtherProfileContent(); if (state.activePostId) renderComments(); }, err => console.warn(err));
             } catch (error) { console.warn("Veri dinleyiciler başlatılamadı:", error); }
         }
 
-        // --- TAKİP & İSTEK SİSTEMİ MİMARİSİ ---
+        // --- SİLME SİSTEMLERİ ---
+        async function deletePost(postId) {
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('posts').doc(postId).delete();
+                showToast("Gönderi başarıyla silindi.", false);
+                if (state.activePostId === postId) closeComments();
+            } catch(e) { showToast("Silinirken hata oluştu.", true); }
+        }
+
+        async function deleteComment(commentId) {
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('comments').doc(commentId).delete();
+                showToast("Yorum silindi.", false);
+            } catch(e) { showToast("Yorum silinemedi.", true); }
+        }
+
+        async function leaveGroup(groupId) {
+            try {
+                const group = state.groups.find(g => g.id === groupId);
+                if(!group) return;
+                const newMembers = group.members.filter(m => m !== state.currentUser.uid);
+                
+                if (newMembers.length === 0) {
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('groups').doc(groupId).delete();
+                    showToast("Grup tamamen silindi.", false);
+                } else {
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('groups').doc(groupId).update({members: newMembers});
+                    showToast("Gruptan ayrıldın.", false);
+                }
+                if (state.activeChatUserId === groupId) closeChat();
+            } catch(e) { showToast("İşlem başarısız.", true); }
+        }
+
         async function handleFollowAction(targetUid, isPrivate) {
             const myId = state.currentUser.uid;
             const existingFollow = state.followers.find(f => f.followerId === myId && f.followingId === targetUid);
             const existingReq = state.followRequests.find(r => r.senderId === myId && r.receiverId === targetUid);
-
             const dataRef = db.collection('artifacts').doc(appId).collection('public').doc('data');
             
             try {
@@ -589,24 +641,10 @@
             } catch (error) { showToast("İşlem başarısız oldu.", true); }
         }
 
-        // BİLDİRİMLER (TAKİP ONAY/RED) SİSTEMİ
-        function openNotifications() {
-            document.getElementById('notifications-modal').classList.remove('hidden');
-            renderNotifications();
-        }
-
-        function closeNotifications() {
-            document.getElementById('notifications-modal').classList.add('hidden');
-        }
-
-        // YAKINDA GELECEKLER MODALI AÇ/KAPA
-        function openComingSoon() {
-            document.getElementById('coming-soon-modal').classList.remove('hidden');
-        }
-
-        function closeComingSoon() {
-            document.getElementById('coming-soon-modal').classList.add('hidden');
-        }
+        function openNotifications() { document.getElementById('notifications-modal').classList.remove('hidden'); renderNotifications(); }
+        function closeNotifications() { document.getElementById('notifications-modal').classList.add('hidden'); }
+        function openComingSoon() { document.getElementById('coming-soon-modal').classList.remove('hidden'); }
+        function closeComingSoon() { document.getElementById('coming-soon-modal').classList.add('hidden'); }
 
         function updateNotificationBadge() {
             const badge = document.getElementById('notif-badge');
@@ -616,14 +654,11 @@
         }
 
         function renderNotifications() {
-            const container = document.getElementById('notifications-list');
-            if(!container) return;
-            container.innerHTML = '';
+            const container = document.getElementById('notifications-list'); if(!container) return; container.innerHTML = '';
             const myRequests = state.followRequests.filter(r => r.receiverId === state.currentUser?.uid);
 
             if (myRequests.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-6 text-sm">Yeni bildirim veya takip isteği yok.</div>';
-                return;
+                container.innerHTML = '<div class="text-center text-gray-500 py-6 text-sm">Yeni bildirim veya takip isteği yok.</div>'; return;
             }
 
             myRequests.forEach(req => {
@@ -653,9 +688,7 @@
         }
 
         async function rejectRequest(reqId) {
-            try {
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('followRequests').doc(reqId).delete();
-            } catch (e) { showToast("Hata oluştu.", true); }
+            try { await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('followRequests').doc(reqId).delete(); } catch (e) { showToast("Hata oluştu.", true); }
         }
 
         function updateMyProfileStats() {
@@ -666,7 +699,7 @@
             document.getElementById('my-following-count').innerText = state.followers.filter(f => f.followerId === myId).length;
         }
 
-        // --- POST & MEDYA SİSTEMİ ---
+        // --- POST & MEDYA SİSTEMİ (GITHUB PAGES DÜZELTMESİ) ---
         let selectedFile = null;
         function openPostModal() { document.getElementById('post-modal').classList.remove('hidden'); selectedFile = null; document.getElementById('post-image-file').value = ''; document.getElementById('file-name-display').innerText = 'Galeriden Fotoğraf Seç (Opsiyonel)'; document.getElementById('image-preview').classList.add('hidden'); }
         function closePostModal() { document.getElementById('post-modal').classList.add('hidden'); }
@@ -687,25 +720,30 @@
             let imageUrl = null;
             try {
                 if (selectedFile) {
-                    const storageRef = storage.ref(`artifacts/${appId}/public/posts/${Date.now()}_${selectedFile.name}`);
-                    const uploadTask = await storageRef.put(selectedFile); imageUrl = await uploadTask.ref.getDownloadURL();
+                    // Dosya ismindeki özel karakterleri temizleyerek güvenli bir ad oluştur.
+                    const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
+                    const storageRef = storage.ref(`public/posts/${Date.now()}_${safeName}`);
+                    const uploadTask = await storageRef.put(selectedFile); 
+                    imageUrl = await uploadTask.ref.getDownloadURL();
                 }
                 await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('posts').add({ authorId: state.currentUser.uid, text: text, imageUrl: imageUrl, likes: [], timestamp: firebase.firestore.FieldValue.serverTimestamp() });
                 document.getElementById('post-text').value = ''; closePostModal(); showToast("Gönderi başarıyla paylaşıldı!", false);
             } catch (error) { 
-                console.error(error); showToast("Yükleme başarısız! Storage kurallarını (Rules) kontrol et: " + error.message, true); 
+                console.error("Storage Error:", error); 
+                showToast("Fotoğraf yüklenemedi. GitHub Pages kullanıyorsan Firebase Storage CORS ayarlarını Google Cloud üzerinden yapmalısın. Hata: " + error.message, true); 
             } finally { btn.innerText = "Paylaş"; btn.disabled = false; }
         }
 
         async function updateProfilePicture(event) {
-            const file = event.target.files[0]; if (!file) return; showToast("Fotoğraf yükleniyor...", false);
+            const file = event.target.files[0]; if (!file) return; showToast("Fotoğraf yükleniyor, lütfen bekle...", false);
             try {
-                const storageRef = storage.ref(`artifacts/${appId}/public/avatars/${state.currentUser.uid}_${Date.now()}`);
+                const storageRef = storage.ref(`public/avatars/${state.currentUser.uid}_${Date.now()}`);
                 const uploadTask = await storageRef.put(file); const newAvatarUrl = await uploadTask.ref.getDownloadURL();
                 await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).update({ avatar: newAvatarUrl });
                 state.userData.avatar = newAvatarUrl; document.getElementById('profile-avatar').src = newAvatarUrl; document.getElementById('current-user-avatar-mini').src = newAvatarUrl; showToast("Profil fotoğrafı güncellendi!", false);
             } catch (error) { 
-                console.error(error); showToast("Fotoğraf yüklenemedi! Lütfen Firebase Storage Kurallarını (Rules) 'allow read, write: if true;' yapın.", true); 
+                console.error("Avatar Error:", error); 
+                showToast("Fotoğraf yüklenemedi. GitHub Pages kullanıyorsan Storage CORS ayarları gereklidir. Hata: " + error.message, true); 
             }
         }
 
@@ -714,7 +752,6 @@
             return state.allUsers.find(u => u.uid === uid) || { username: 'Bilinmeyen', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=x' }; 
         }
 
-        // --- BEĞENİ VE YORUM SİSTEMİ ---
         async function toggleLike(postId) {
             if (!state.currentUser) return;
             const postRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('posts').doc(postId);
@@ -724,53 +761,42 @@
             const myId = state.currentUser.uid;
             let newLikes = post.likes || [];
             
-            if (newLikes.includes(myId)) {
-                newLikes = newLikes.filter(id => id !== myId);
-            } else {
-                newLikes.push(myId);
-            }
+            if (newLikes.includes(myId)) newLikes = newLikes.filter(id => id !== myId);
+            else newLikes.push(myId);
 
-            try {
-                await postRef.update({ likes: newLikes });
-            } catch (error) {
-                showToast("Beğeni işlemi başarısız.", true);
-            }
+            try { await postRef.update({ likes: newLikes }); } catch (error) { showToast("Beğeni işlemi başarısız.", true); }
         }
 
-        function openComments(postId) {
-            state.activePostId = postId;
-            document.getElementById('comments-modal').classList.remove('hidden');
-            renderComments();
-        }
-
-        function closeComments() {
-            state.activePostId = null;
-            document.getElementById('comments-modal').classList.add('hidden');
-        }
+        function openComments(postId) { state.activePostId = postId; document.getElementById('comments-modal').classList.remove('hidden'); renderComments(); }
+        function closeComments() { state.activePostId = null; document.getElementById('comments-modal').classList.add('hidden'); }
 
         function renderComments() {
             if (!state.activePostId) return;
-            const container = document.getElementById('comments-list');
-            container.innerHTML = '';
-            
+            const container = document.getElementById('comments-list'); container.innerHTML = '';
             const postComments = state.comments.filter(c => c.postId === state.activePostId).sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
             
             if (postComments.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-10 text-sm">İlk yorumu sen yap!</div>';
-                return;
+                container.innerHTML = '<div class="text-center text-gray-500 py-10 text-sm">İlk yorumu sen yap!</div>'; return;
             }
 
             postComments.forEach(comment => {
                 const author = getUser(comment.authorId);
                 const timeStr = comment.timestamp?.toDate ? new Date(comment.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Şimdi';
                 
+                // Silme yetkisi: Yorumu yazan kişi veya postun sahibi silebilir
+                const canDelete = comment.authorId === state.currentUser?.uid || state.posts.find(p => p.id === state.activePostId)?.authorId === state.currentUser?.uid;
+                const deleteHtml = canDelete ? `<i class="ph ph-trash text-gray-500 hover:text-red-500 cursor-pointer transition ml-2" onclick="askConfirm('Bu yorumu silmek istediğine emin misin?', () => deleteComment('${comment.id}'))" title="Yorumu Sil"></i>` : '';
+
                 container.innerHTML += `
                     <div class="flex gap-3">
                         <img src="${author.avatar}" class="w-8 h-8 rounded-full object-cover mt-1 cursor-pointer" onclick="closeComments(); openOtherProfile('${author.uid}')">
                         <div class="flex-1 bg-white/5 rounded-xl p-3">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="font-semibold text-sm hover:text-pink-400 cursor-pointer transition" onclick="closeComments(); openOtherProfile('${author.uid}')">${author.username}</span>
-                                <span class="text-[10px] text-gray-400">${timeStr}</span>
+                                <div class="flex items-center">
+                                    <span class="text-[10px] text-gray-400">${timeStr}</span>
+                                    ${deleteHtml}
+                                </div>
                             </div>
                             <p class="text-sm text-gray-200">${comment.text}</p>
                         </div>
@@ -780,22 +806,10 @@
         }
 
         async function addComment() {
-            const input = document.getElementById('comment-input');
-            const text = input.value.trim();
-            if (!text || !state.activePostId) return;
-            
-            input.value = '';
-            
-            try {
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('comments').add({
-                    postId: state.activePostId,
-                    authorId: state.currentUser.uid,
-                    text: text,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            } catch (error) {
-                showToast("Yorum eklenemedi.", true);
-            }
+            const input = document.getElementById('comment-input'); const text = input.value.trim();
+            if (!text || !state.activePostId) return; input.value = '';
+            try { await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('comments').add({ postId: state.activePostId, authorId: state.currentUser.uid, text: text, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); } 
+            catch (error) { showToast("Yorum eklenemedi.", true); }
         }
 
         // --- RENDER SİSTEMLERİ ---
@@ -814,12 +828,16 @@
             const myGroups = state.groups.filter(g => g.members.includes(state.currentUser.uid));
             myGroups.forEach(group => {
                 const el = document.createElement('div');
-                el.className = 'glass-panel rounded-xl p-3 flex items-center gap-4 cursor-pointer hover:bg-white/10 transition border border-cyan-500/30';
+                el.className = 'glass-panel rounded-xl p-3 flex items-center justify-between gap-4 cursor-pointer hover:bg-white/10 transition border border-cyan-500/30';
                 el.onclick = () => openChat(group.id, true, group.name);
                 el.innerHTML = `
-                    <div class="relative w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-blue-500"><i class="ph-fill ph-users text-2xl text-white"></i></div>
-                    <div class="flex-1"><h4 class="font-semibold text-sm">${group.name}</h4><p class="text-xs text-cyan-400">Grup Sohbeti</p></div>
-                    <i class="ph ph-chat-teardrop-dots text-2xl text-cyan-400 opacity-50"></i>`;
+                    <div class="flex items-center gap-3 flex-1">
+                        <div class="relative w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-blue-500"><i class="ph-fill ph-users text-2xl text-white"></i></div>
+                        <div class="flex-1"><h4 class="font-semibold text-sm">${group.name}</h4><p class="text-xs text-cyan-400">Grup Sohbeti</p></div>
+                    </div>
+                    <div class="p-2" onclick="event.stopPropagation(); askConfirm('Gruptan ayrılmak istediğine emin misin?', () => leaveGroup('${group.id}'))" title="Ayrıl/Sil">
+                        <i class="ph ph-sign-out text-red-400 hover:text-red-500 text-xl transition"></i>
+                    </div>`;
                 container.appendChild(el);
             });
 
@@ -849,8 +867,7 @@
             });
 
             if(displayPosts.length === 0) {
-                container.innerHTML = `<div class="text-center text-gray-500 py-10 flex flex-col items-center"><i class="ph ph-camera-slash text-4xl mb-2 text-white/20"></i>Ağda henüz gösterilecek gönderi yok.</div>`;
-                return;
+                container.innerHTML = `<div class="text-center text-gray-500 py-10 flex flex-col items-center"><i class="ph ph-camera-slash text-4xl mb-2 text-white/20"></i>Ağda henüz gösterilecek gönderi yok.</div>`; return;
             }
 
             displayPosts.forEach(post => {
@@ -865,6 +882,11 @@
                 const isLiked = (post.likes || []).includes(state.currentUser?.uid);
                 const likeIconClass = isLiked ? 'ph-fill ph-heart text-pink-500' : 'ph ph-heart hover:text-pink-500 transition';
                 const commentsCount = state.comments.filter(c => c.postId === post.id).length;
+                
+                // Silme yetkisi
+                const deleteHtml = post.authorId === state.currentUser?.uid 
+                    ? `<i class="ph ph-trash text-gray-500 hover:text-red-500 cursor-pointer transition ml-2" onclick="askConfirm('Bu gönderiyi silmek istediğine emin misin?', () => deletePost('${post.id}'))" title="Gönderiyi Sil"></i>` 
+                    : '';
 
                 const postEl = document.createElement('div');
                 postEl.className = 'glass-panel rounded-2xl p-4 transition hover:bg-white/5';
@@ -874,7 +896,10 @@
                             <div class="relative"><img src="${author.avatar}" class="w-10 h-10 rounded-full bg-gray-800 object-cover">${dotHtml}</div>
                             <div>
                                 <div class="font-semibold text-sm flex items-center hover:text-pink-400 transition">${author.username} ${privateBadge}</div>
-                                <div class="text-xs text-gray-400">${timeStr}</div>
+                                <div class="flex items-center">
+                                    <span class="text-xs text-gray-400">${timeStr}</span>
+                                    ${deleteHtml}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -984,8 +1009,16 @@
                     const commentsCount = state.comments.filter(c => c.postId === post.id).length;
                     const imgHtml = post.imageUrl ? `<img src="${post.imageUrl}" class="w-full h-auto mt-2 rounded-lg object-cover">` : '';
                     
+                    const deleteHtml = state.currentUser?.uid === uid 
+                        ? `<i class="ph ph-trash text-gray-500 hover:text-red-500 cursor-pointer transition ml-2" onclick="askConfirm('Bu gönderiyi silmek istediğine emin misin?', () => deletePost('${post.id}'))" title="Gönderiyi Sil"></i>` 
+                        : '';
+
                     container.innerHTML += `
                         <div class="glass-panel rounded-2xl p-4 mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] text-gray-400">${post.timestamp?.toDate ? new Date(post.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Şimdi'}</span>
+                                ${deleteHtml}
+                            </div>
                             <p class="text-sm font-light text-gray-200">${post.text.replace(/\n/g, '<br>')}</p>
                             ${imgHtml}
                             <div class="flex gap-6 mt-4 text-gray-400 select-none">
@@ -999,230 +1032,6 @@
                         </div>`;
                 });
             }
-        }
-
-        function openGroupModal() {
-            const container = document.getElementById('group-users-list'); container.innerHTML = '';
-            let others = state.allUsers.filter(u => u.uid !== state.currentUser?.uid);
-            others.forEach(user => {
-                container.innerHTML += `<label class="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg cursor-pointer"><input type="checkbox" value="${user.uid}" class="group-checkbox form-checkbox h-4 w-4 text-pink-500 rounded bg-gray-800 border-gray-600 focus:ring-pink-500 focus:ring-offset-gray-900"><img src="${user.avatar}" class="w-8 h-8 rounded-full"><span class="text-sm">${user.username}</span></label>`;
-            });
-            document.getElementById('group-modal').classList.remove('hidden');
-        }
-        function closeGroupModal() { document.getElementById('group-modal').classList.add('hidden'); document.getElementById('group-name').value = ''; }
-        
-        async function createGroup() {
-            const name = document.getElementById('group-name').value.trim();
-            const checkedBoxes = document.querySelectorAll('.group-checkbox:checked');
-            if (!name) return showToast("Grup adı girmelisin.", true);
-            if (checkedBoxes.length === 0) return showToast("En az 1 kişi seçmelisin.", true);
-            
-            const members = [state.currentUser.uid];
-            checkedBoxes.forEach(cb => members.push(cb.value));
-
-            try {
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('groups').add({ name: name, members: members, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-                closeGroupModal(); showToast("Grup başarıyla oluşturuldu!", false);
-            } catch(e) { showToast("Grup oluşturulamadı.", true); }
-        }
-
-        // TAM KUSURSUZ İKON RENGİ DÜZELTMESİ (Gelişmiş Geçiş)
-        function switchTab(tab) {
-            ['view-feed', 'view-messages', 'view-profile', 'view-search', 'view-settings'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.classList.add('hidden');
-            });
-            
-            ['nav-feed', 'nav-search', 'nav-messages', 'nav-profile'].forEach(id => {
-                const btn = document.getElementById(id);
-                if (btn) { 
-                    btn.classList.remove('nav-active'); 
-                    const icon = btn.querySelector('i');
-                    if(icon) { icon.classList.remove('ph-fill'); icon.classList.add('ph'); }
-                }
-            });
-            
-            const activeView = document.getElementById(`view-${tab}`);
-            if (activeView) activeView.classList.remove('hidden');
-            
-            const activeNav = document.getElementById(`nav-${tab}`);
-            if (activeNav) {
-                activeNav.classList.add('nav-active'); 
-                const icon = activeNav.querySelector('i');
-                if(icon) { icon.classList.remove('ph'); icon.classList.add('ph-fill'); }
-            }
-            
-            if (tab === 'messages') renderUsersList();
-            if (tab === 'search') handleSearch();
-            if (tab === 'profile') updateMyProfileStats();
-        }
-
-        // AYARLAR (Settings) MENÜSÜ FONKSİYONLARI
-        function openSettings() { switchTab('settings'); }
-
-        async function changeBio() {
-            const newBio = document.getElementById('settings-bio').value.trim();
-            if(!newBio) return;
-            try {
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).update({bio: newBio});
-                state.userData.bio = newBio;
-                document.getElementById('profile-bio').innerText = newBio;
-                showToast("Biyografi başarıyla güncellendi!", false);
-            } catch(e) { showToast("Güncellenemedi: " + e.message, true); }
-        }
-
-        async function changeUsername() {
-            const newName = document.getElementById('settings-username').value.trim();
-            if(!newName) return;
-            try {
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).update({username: newName});
-                state.userData.username = newName;
-                document.getElementById('profile-username').innerText = newName;
-                showToast("Kullanıcı adı başarıyla güncellendi!", false);
-            } catch(e) { showToast("Güncellenemedi: " + e.message, true); }
-        }
-
-        async function changeEmail() {
-            const newEmail = document.getElementById('settings-email').value.trim();
-            if(!newEmail) return;
-            try {
-                await auth.currentUser.verifyBeforeUpdateEmail(newEmail);
-                showToast("Yeni e-postanıza onay bağlantısı gönderildi! Lütfen kontrol edin.", false);
-            } catch(e) {
-                if(e.code === 'auth/requires-recent-login') showToast("Güvenlik: İşlem için lütfen çıkış yapıp tekrar girin.", true);
-                else showToast("Hata: " + e.message, true);
-            }
-        }
-
-        async function changePassword() {
-            const newPass = document.getElementById('settings-password').value.trim();
-            if(!newPass || newPass.length < 6) return showToast("Şifre en az 6 karakter olmalı", true);
-            try {
-                await auth.currentUser.updatePassword(newPass);
-                showToast("Parola başarıyla değiştirildi!", false);
-                document.getElementById('settings-password').value = '';
-            } catch(e) {
-                if(e.code === 'auth/requires-recent-login') showToast("Güvenlik: İşlem için lütfen çıkış yapıp tekrar girin.", true);
-                else showToast("Hata: " + e.message, true);
-            }
-        }
-
-        async function linkGoogleAccount() {
-            try {
-                const provider = new firebase.auth.GoogleAuthProvider();
-                await auth.currentUser.linkWithPopup(provider);
-                showToast("Google hesabı başarıyla bağlandı!", false);
-            } catch(e) { showToast("Bağlama hatası: " + e.message, true); }
-        }
-
-        function togglePersistence() {
-            const isSession = localStorage.getItem('npm_persistence') === 'session';
-            if (isSession) {
-                localStorage.setItem('npm_persistence', 'local');
-                auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-                showToast("Oturum kalıcılığı açık. Otomatik çıkış iptal.", false);
-            } else {
-                localStorage.setItem('npm_persistence', 'session');
-                auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
-                showToast("Güvenlik aktif: Tarayıcı kapanınca çıkış yapılacak.", false);
-            }
-            updatePersistenceUI();
-        }
-
-        function updatePersistenceUI() {
-            const icon = document.getElementById('persistence-icon');
-            if(localStorage.getItem('npm_persistence') === 'session') {
-                icon.classList.replace('ph-toggle-left', 'ph-toggle-right');
-                icon.classList.add('text-pink-500');
-            } else {
-                icon.classList.replace('ph-toggle-right', 'ph-toggle-left');
-                icon.classList.remove('text-pink-500');
-            }
-        }
-
-        // MESAJLAŞMA & GEMINI AI BOT
-        function openChat(targetId, isGroup = false, name = "Kullanıcı", avatarUrl = "") {
-            state.activeChatUserId = targetId; state.isGroupChat = isGroup;
-            document.getElementById('chat-avatar').src = isGroup ? "https://api.dicebear.com/7.x/initials/svg?seed=Grup" : avatarUrl;
-            document.getElementById('chat-username').innerText = name;
-            document.getElementById('chat-panel').classList.remove('hidden');
-            renderChatMessages();
-        }
-        function closeChat() { state.activeChatUserId = null; document.getElementById('chat-panel').classList.add('hidden'); }
-
-        function renderChatMessages() {
-            if (!state.activeChatUserId) return;
-            const targetId = state.activeChatUserId; const myId = state.currentUser.uid;
-            let chatMsgs = [];
-            
-            if(state.isGroupChat) {
-                chatMsgs = state.messages.filter(m => m.receiverId === targetId);
-            } else {
-                chatMsgs = state.messages.filter(m => (m.senderId === myId && m.receiverId === targetId) || (m.senderId === targetId && m.receiverId === myId));
-            }
-
-            const container = document.getElementById('chat-messages'); container.innerHTML = '';
-            chatMsgs.forEach(msg => {
-                const isMe = msg.senderId === myId;
-                const senderName = state.isGroupChat && !isMe ? `<div class="text-[10px] text-pink-300 mb-0.5 font-semibold">${getUser(msg.senderId).username}</div>` : '';
-                const time = msg.timestamp?.toDate ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Şimdi';
-                
-                container.innerHTML += `
-                    <div class="flex w-full ${isMe ? 'justify-end' : 'justify-start'}">
-                        <div class="max-w-[75%] p-3 rounded-2xl text-sm ${isMe ? 'bg-gradient-to-r from-pink-500 to-purple-600 rounded-tr-sm text-white' : 'glass-panel rounded-tl-sm text-gray-100'}">
-                            ${senderName}${msg.text}
-                            <div class="text-[10px] text-right mt-1 opacity-60">${time}</div>
-                        </div>
-                    </div>`;
-            });
-            container.scrollTop = container.scrollHeight;
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('chat-input'); const text = input.value.trim();
-            if (!text || !state.activeChatUserId) return; input.value = '';
-            
-            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('messages').add({ senderId: state.currentUser.uid, receiverId: state.activeChatUserId, text: text, isGroup: state.isGroupChat, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-
-            if (state.activeChatUserId === 'gemini_bot') {
-                askGemini(text);
-            }
-        }
-        document.getElementById('chat-input').addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
-
-        async function askGemini(prompt) {
-            try {
-                // API ANAHTARI VE BAĞLANTISI GÜNCELLENDİ
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        systemInstruction: { parts: [{ text: "Sen NPM Social ağının resmi yapay zeka asistanısın. Adın Gemini. Türkçe, havalı ve samimi bir dille cevap ver. Mesajların kısa, teknolojik ve sosyal medyaya uygun olsun." }] }
-                    })
-                });
-                const data = await res.json();
-                if (data.candidates && data.candidates[0].content.parts[0].text) {
-                    const reply = data.candidates[0].content.parts[0].text;
-                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('messages').add({
-                        senderId: 'gemini_bot', receiverId: state.currentUser.uid, text: reply, isGroup: false, timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                }
-            } catch(e) { console.error("Gemini Error:", e); showToast("Yapay zeka asistanı şu an meşgul.", true); }
-        }
-
-        async function togglePrivate() {
-            const newState = !state.userData.isPrivate;
-            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(state.currentUser.uid).update({ isPrivate: newState });
-            state.userData.isPrivate = newState; updatePrivateUI(); showToast(newState ? "Hesabın artık gizli." : "Hesabın artık herkese açık.", false);
-        }
-
-        function updatePrivateUI() {
-            const bg = document.getElementById('private-toggle-ui'); const dot = bg.firstElementChild;
-            if (state.userData.isPrivate) { bg.classList.replace('bg-gray-600', 'bg-pink-500'); dot.classList.add('translate-x-5'); bg.style.boxShadow = "0 0 10px #ec4899"; } 
-            else { bg.classList.replace('bg-pink-500', 'bg-gray-600'); dot.classList.remove('translate-x-5'); bg.style.boxShadow = "none"; }
-            renderFeed(); renderOtherProfileContent();
         }
 
         window.onload = () => initApp();
